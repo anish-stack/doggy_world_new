@@ -41,6 +41,11 @@ import DashboardHome from "./DashboardHome"
 import AllPets from "@/screens/Pets/AllPets"
 import PetTypes from "@/screens/Pets/PetTypes"
 import DashboardHeader from "@/own_components/DashboardHeader"
+import MainCategory from "@/screens/Main Category/MainCategory"
+import AllCollectionVaccines from "@/screens/Vaccines/VaccineCats/AllCollectionVaccines"
+import AllVaccines from "@/screens/Vaccines/VaccinesPackages/AllVaccines"
+import CreateVaccines from "@/screens/Vaccines/VaccinesPackages/CreateVaccines"
+import EditVaccines from "@/screens/Vaccines/VaccinesPackages/EditVaccines"
 
 const DashboardPage = () => {
   const location = useLocation()
@@ -150,7 +155,7 @@ const DashboardPage = () => {
       title: "Vaccination",
       icon: <Syringe className="h-5 w-5" />,
       items: [
-        { to: "/dashboard/type-of-vaccination-collection", label: "TypeOfVaccinationCollection" },
+        { to: "/dashboard/type-of-vaccination-collection", label: "Collection Type" },
         { to: "/dashboard/all-vaccination", label: "All Vaccination" },
         { to: "/dashboard/schedule-vaccination", label: "Schedule Vaccination" },
       ],
@@ -349,6 +354,19 @@ const DashboardPage = () => {
             <Route path="/" element={<DashboardHome />} />
             <Route path="/all-pets" element={<AllPets />} />
             <Route path="/all-pet-types" element={<PetTypes />} />
+
+
+
+            {/* Main Categiry */}
+            <Route path="/main-category" element={<MainCategory />} />
+
+          {/* Vaccine */}
+          <Route path="/type-of-vaccination-collection" element={<AllCollectionVaccines/>} />
+          <Route path="/all-vaccination" element={<AllVaccines/>} />
+          <Route path="/edit-vaccination-product/:id" element={<EditVaccines/>} />
+          <Route path="/create-vaccination-product" element={<CreateVaccines/>} />
+
+
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

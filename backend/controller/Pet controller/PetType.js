@@ -39,7 +39,8 @@ exports.createPetType = async (req, res) => {
 // Get all Pet Types
 exports.getAllPetTypes = async (req, res) => {
     try {
-        const { search = '' } = req.query;  // Default search to empty string if not provided
+        const { search = '' } = req.query;
+        console.log(search)  // Default search to empty string if not provided
 
         // Query the database, filter based on the search term if provided
         const petTypes = await Pet.find({

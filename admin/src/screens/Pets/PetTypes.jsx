@@ -48,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const PetTypes = () => {
   const [petTypes, setPetTypes] = useState([]);
@@ -62,6 +63,7 @@ const PetTypes = () => {
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newPetTypeName, setNewPetTypeName] = useState("");
+  const [status, setStatus] = useState(false)
   const [selectedPetType, setSelectedPetType] = useState(null);
 
   const fetchPetTypes = async (page = 1) => {
@@ -96,6 +98,7 @@ const PetTypes = () => {
       toast.success(response.data.message || "Pet type created successfully!");
       setIsCreateDialogOpen(false);
       setNewPetTypeName("");
+      setStatus(false)
     } catch (error) {
       console.error("Error creating pet type:", error);
       toast.error(error.response?.data?.message || "Error creating pet type!");
@@ -111,12 +114,13 @@ const PetTypes = () => {
     try {
       const response = await axios.post(
         `${API_URL}/update-pet-type/${selectedPetType._id}`,
-        { petType: newPetTypeName }
+        { petType: newPetTypeName, status }
       );
       await fetchPetTypes(currentPage);
       toast.success(response.data.message || "Pet type updated successfully!");
       setIsUpdateDialogOpen(false);
       setNewPetTypeName("");
+      setStatus(false)
       setSelectedPetType(null);
     } catch (error) {
       console.error("Error updating pet type:", error);
@@ -151,6 +155,7 @@ const PetTypes = () => {
 
   const openUpdateDialog = (petType) => {
     setSelectedPetType(petType);
+    setStatus(petType.status)
     setNewPetTypeName(petType.petType);
     setIsUpdateDialogOpen(true);
   };
@@ -168,14 +173,14 @@ const PetTypes = () => {
   const renderPaginationItems = () => {
     const items = [];
     const maxDisplayedPages = 5;
-    
+
     let startPage = Math.max(1, currentPage - Math.floor(maxDisplayedPages / 2));
     let endPage = Math.min(totalPages, startPage + maxDisplayedPages - 1);
-    
+
     if (endPage - startPage + 1 < maxDisplayedPages) {
       startPage = Math.max(1, endPage - maxDisplayedPages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       items.push(
         <PaginationItem key={i}>
@@ -188,7 +193,7 @@ const PetTypes = () => {
         </PaginationItem>
       );
     }
-    
+
     return items;
   };
 
@@ -223,8 +228,8 @@ const PetTypes = () => {
         {error ? (
           <div className="py-8 text-center">
             <p className="text-red-500">{error}</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-4"
               onClick={() => fetchPetTypes(currentPage)}
             >
@@ -292,9 +297,9 @@ const PetTypes = () => {
                     disabled={currentPage === 1}
                   />
                 </PaginationItem>
-                
+
                 {renderPaginationItems()}
-                
+
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
@@ -346,6 +351,19 @@ const PetTypes = () => {
             placeholder="Pet Type Name"
             className="mt-2"
           />
+         <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+  <Checkbox
+    checked={status}
+    onCheckedChange={() => setStatus(!status)}
+    className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+  />
+  <span className={`text-sm font-medium ${status ? 'text-green-600' : 'text-red-500'}`}>
+    {status ? 'Visible to users' : 'Hidden from users'}
+  </span>
+</div>
+
+  
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUpdateDialogOpen(false)}>
               Cancel

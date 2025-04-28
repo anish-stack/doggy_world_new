@@ -29,7 +29,28 @@ const deleteFile = (filePath) => {
   });
 };
 
+const deleteMultipleFiles = async (files) => {
+  try {
+      // Check if files are passed
+      if (!files || files.length === 0) return;
+
+      // Loop through each file and delete it
+      for (let file of files) {
+          if (file?.path) {
+              // If it's a local file, delete it
+              await fs.unlink(file.path);
+              console.log(`Deleted local file: ${file.path}`);
+          }
+      }
+  } catch (error) {
+      console.error("Error deleting multiple files:", error);
+      throw new Error("Error deleting files");
+  }
+};
+
+
 module.exports = {
   upload,
-  deleteFile
+  deleteFile,
+  deleteMultipleFiles
 };

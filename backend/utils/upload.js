@@ -56,7 +56,7 @@ const handleImageUpload = async (file, folder = 'uploads', options = { quality: 
       .toFile(tempFilePath);
 
     // Upload compressed image
-    const result = await uploadToCloudinary(tempFilePath, folder);
+    const result = await uploadToCloudinary(file.path, folder);
 
     // Clean up
     fs.unlinkSync(tempFilePath);
@@ -148,7 +148,7 @@ const uploadMultipleFiles = async (files, options = {}) => {
   }
 };
 
-const deleteFile = async (publicId) => {
+const deleteFileCloud = async (publicId) => {
   try {
     return await Cloudinary.uploader.destroy(publicId);
   } catch (error) {
@@ -157,7 +157,7 @@ const deleteFile = async (publicId) => {
   }
 };
 
-const deleteMultipleFiles = async (publicIds) => {
+const deleteMultipleFilesCloud = async (publicIds) => {
   try {
     return await Cloudinary.api.delete_resources(publicIds);
   } catch (error) {
@@ -172,7 +172,7 @@ module.exports = {
   handleImageUpload,
   handleVideoUpload,
   handleGifUpload,
-  deleteFile,
-  deleteMultipleFiles,
+  deleteFileCloud,
+  deleteMultipleFilesCloud,
   uploadToCloudinary
 };

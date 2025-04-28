@@ -3,6 +3,35 @@ const mongoose = require('mongoose');
 
 const VaccinationSchema = new mongoose.Schema({
 
+    image: [{
+        url: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        public_id: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        position:{
+            type:Number
+        }
+    }],
+
+    mainImage:{
+        url: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        public_id: {
+            type: String,
+            required: true,
+            trim: true
+        },
+    },   // use first image which position of 1
+
     title: {
         type: String,
         required: true
@@ -67,10 +96,13 @@ const VaccinationSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
-    WhichTypeOfvaccinations: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'TypeOfVaccinationCollection'
-    }
+    VaccinedInclueds:[String],
+    WhichTypeOfvaccinations: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'TypeOfVaccinationCollection'
+        }
+    ]
 
 }, { timestamps: true });
 
