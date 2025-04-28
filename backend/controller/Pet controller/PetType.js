@@ -4,7 +4,7 @@ const Pet = require("../../models/petAndAuth/petSchema");
 exports.createPetType = async (req, res) => {
     try {
         const { petType, status } = req.body;
-        
+
         if (!petType) {
             return res.status(400).json({
                 success: false,
@@ -39,7 +39,13 @@ exports.createPetType = async (req, res) => {
 // Get all Pet Types
 exports.getAllPetTypes = async (req, res) => {
     try {
-        const petTypes = await Pet.find();
+        const { search = '' } = req.query;  // Default search to empty string if not provided
+
+        // Query the database, filter based on the search term if provided
+        const petTypes = await Pet.find({
+            petType: { $regex: search, $options: 'i' }  // Case-insensitive search
+        });
+
         if (!petTypes || petTypes.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -60,16 +66,17 @@ exports.getAllPetTypes = async (req, res) => {
     }
 };
 
+
 // Update Pet Type
 exports.updatePetType = async (req, res) => {
     try {
         const { id } = req.params;
         const { petType, status } = req.body;
-        console.log( req.body)
-        console.log( id)
-        
+        console.log(req.body)
+        console.log(id)
 
-        if (!petType ) {
+
+        if (!petType) {
             return res.status(400).json({
                 success: false,
                 message: 'Please provide both pet type and status to update.'
@@ -105,7 +112,7 @@ exports.updatePetType = async (req, res) => {
 exports.deletePetType = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const pet = await Pet.findById(id);
         if (!pet) {
             return res.status(404).json({
@@ -114,7 +121,7 @@ exports.deletePetType = async (req, res) => {
             });
         }
 
-        await pet.remove();
+        await pet.deleteOne();
 
         return res.status(200).json({
             success: true,
