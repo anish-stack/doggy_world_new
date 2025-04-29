@@ -19,10 +19,7 @@ const CakeFlavourSchema = new mongoose.Schema({
         unique: true,
         trim: true
     },
-    position: {
-        type: Number,
-        required: true
-    },
+    
     isActive: {
         type: Boolean,
         default: true

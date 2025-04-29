@@ -46,6 +46,14 @@ import AllCollectionVaccines from "@/screens/Vaccines/VaccineCats/AllCollectionV
 import AllVaccines from "@/screens/Vaccines/VaccinesPackages/AllVaccines"
 import CreateVaccines from "@/screens/Vaccines/VaccinesPackages/CreateVaccines"
 import EditVaccines from "@/screens/Vaccines/VaccinesPackages/EditVaccines"
+import AllDesign from "@/screens/Cakes/AllDesign"
+import AllFlavours from "@/screens/Cakes/flavours/AllFlavours"
+import AllSizes from "@/screens/Cakes/Sizes/AllSizes"
+import AllBakeryCategories from "@/screens/Bakery/BakeryCategories/AllBakeryCategories"
+import AllBakeryProducts from "@/screens/Bakery/Bakery Products/AllBakeryProducts"
+import CreateAndEdit from "@/screens/Bakery/Bakery Products/CreateAndEdit"
+import AllPhysioTherapy from "@/screens/PhysioTherapy/AllPhysioTherapy"
+import CreateAndEditPhysio from "@/screens/PhysioTherapy/CreateAndEditPhysio"
 
 const DashboardPage = () => {
   const location = useLocation()
@@ -124,8 +132,8 @@ const DashboardPage = () => {
       title: "Pet Bakery",
       icon: <Cake className="h-5 w-5" />,
       items: [
-        { to: "/dashboard/pet-bakery-categories", label: "Pet Bakery Categories" },
-        { to: "/dashboard/pet-bakery-products", label: "Pet Baker Products" },
+        { to: "/dashboard/pet-bakery-categories", label: " Bakery Categories" },
+        { to: "/dashboard/pet-bakery-products", label: "Bakery Products" },
       ],
     },
     {
@@ -360,11 +368,31 @@ const DashboardPage = () => {
             {/* Main Categiry */}
             <Route path="/main-category" element={<MainCategory />} />
 
-          {/* Vaccine */}
-          <Route path="/type-of-vaccination-collection" element={<AllCollectionVaccines/>} />
-          <Route path="/all-vaccination" element={<AllVaccines/>} />
-          <Route path="/edit-vaccination-product/:id" element={<EditVaccines/>} />
-          <Route path="/create-vaccination-product" element={<CreateVaccines/>} />
+            {/* Vaccine */}
+            <Route path="/type-of-vaccination-collection" element={<AllCollectionVaccines />} />
+            <Route path="/all-vaccination" element={<AllVaccines />} />
+            <Route path="/edit-vaccination-product/:id" element={<EditVaccines />} />
+            <Route path="/create-vaccination-product" element={<CreateVaccines />} />
+
+
+            {/* Cakes design  */}
+            <Route path="/all-design" element={<AllDesign />} />
+
+            <Route path="/all-flavors" element={<AllFlavours />} />
+            <Route path="/all-sizes" element={<AllSizes />} />
+
+
+            {/* Pet Bakery  */}
+            <Route path="/pet-bakery-categories" element={<AllBakeryCategories />} />
+            <Route path="/pet-bakery-products" element={<AllBakeryProducts />} />
+            <Route path="/create-and-edit-pet-bakery-categories" element={<CreateAndEdit />} />
+
+
+
+
+            <Route path="/physiotherapy" element={<AllPhysioTherapy />} />
+            <Route path="/create-physiotherapy" element={<CreateAndEditPhysio />} />
+
 
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

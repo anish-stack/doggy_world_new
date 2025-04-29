@@ -43,8 +43,26 @@ const petBakeryProductSchema = new mongoose.Schema({
     },
     price: {
         type: Number,
-        required: true,
         min: 0,
+    },
+    discountPrice: {
+        type: Number,
+        min: 0,
+    },
+    offPercentage: {
+        type: Number,
+        min: 0,
+        max: 100,
+    },
+    mainImage:{
+        url:{
+            type: String,
+            trim: true,
+        },
+        public_id:{
+            type: String,
+            trim: true,
+        }
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
@@ -62,11 +80,11 @@ const petBakeryProductSchema = new mongoose.Schema({
             required: [true, 'Public ID is required'],
             trim: true,
         },
+        position: {
+            type: Number
+        }
     }],
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    },
+
     isCod: {
         type: Boolean,
         default: false,

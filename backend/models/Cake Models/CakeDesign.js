@@ -30,7 +30,7 @@ const CakeDesignSchema = new mongoose.Schema({
    
     whichFlavoredCake: [{
         type: mongoose.Schema.Types.ObjectId,
-        CakeFlavour
+        ref:'CakeFlavour'
     }]
 
 }, { timestamps: true });

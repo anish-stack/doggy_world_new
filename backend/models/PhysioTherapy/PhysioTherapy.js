@@ -20,6 +20,9 @@ const PhysioTherapySchema = new mongoose.Schema({
             required: [true, 'Public ID is required'],
             trim: true,
         },
+        position:{
+            type: Number,
+        }
     }],
     smallDesc: {
         type: String,
@@ -49,15 +52,23 @@ const PhysioTherapySchema = new mongoose.Schema({
         required: false,
         min: [0, 'Discount price cannot be negative'],
     },
+    offPercentage:{
+        type: Number,
+        required: false,
+        min: [0, 'Discount Percenatge cannot be negative'],
+    },
     popular: {
         type: Boolean,
         required: false,
         default: false,
     },
+    active: {
+        type: Boolean,
+        required: false,
+    },
     position: {
         type: Number,
-        default: 0,
-        min: [0, 'Position cannot be less than 0']
+        min: [1, 'Position cannot be less than 1']
     }
 }, {
     timestamps: true,

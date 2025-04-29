@@ -17,7 +17,10 @@ const CakeSizeSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: false
-    }
+    },
+    position:{
+        type: Number,
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model('CakeSize', CakeSizeSchema);

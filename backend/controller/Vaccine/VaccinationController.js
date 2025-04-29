@@ -83,7 +83,7 @@ exports.createVaccineProduct = async (req, res) => {
 
         // Check if at least one image is uploaded
         const images = req.files;
-        console.log(images)
+       
         if (!images || images.length === 0) {
             return res.status(400).json({
                 success: false,
