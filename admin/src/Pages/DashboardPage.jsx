@@ -21,6 +21,7 @@ import {
   FileText,
   Dog,
   Cat,
+  ShoppingCart,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -54,6 +55,10 @@ import AllBakeryProducts from "@/screens/Bakery/Bakery Products/AllBakeryProduct
 import CreateAndEdit from "@/screens/Bakery/Bakery Products/CreateAndEdit"
 import AllPhysioTherapy from "@/screens/PhysioTherapy/AllPhysioTherapy"
 import CreateAndEditPhysio from "@/screens/PhysioTherapy/CreateAndEditPhysio"
+import Coupon from "@/screens/coupons/coupon"
+import PetShopCategories from "@/screens/Pet Shop/PetShopCategories/PetShopCategories"
+import PetShopSubCategories from "@/screens/Pet Shop/PetShopSubCategories/PetShopSubCategories"
+import PetShopProducts from "@/screens/Pet Shop/PetShopProduct/PetShopProducts"
 
 const DashboardPage = () => {
   const location = useLocation()
@@ -95,14 +100,13 @@ const DashboardPage = () => {
         { to: "/dashboard/physiotherapy-booking", label: "Physiotherapy Booking" },
       ],
     },
+
     {
       title: "Coupons",
       icon: <Tag className="h-5 w-5" />,
-      items: [
-        { to: "/dashboard/pet-shop-coupons", label: "Pet Shop Coupons" },
-        { to: "/dashboard/vaccination-coupons", label: "Vaccination Coupons" },
-        { to: "/dashboard/cake-coupons", label: "Cake Coupons" },
-      ],
+      singleItem: true,
+      to: "/dashboard/coupons",
+      label: "Coupons",
     },
     {
       title: "Pets",
@@ -110,6 +114,16 @@ const DashboardPage = () => {
       items: [
         { to: "/dashboard/all-pets", label: "All Pets" },
         { to: "/dashboard/all-pet-types", label: "Pets Type" }
+      ],
+    },
+    {
+      title: "Pet Shops",
+      icon: <ShoppingCart className="h-5 w-5" />,
+      items: [
+        { to: "/dashboard/type-of-pet-shop", label: "Pet Shop Categories" },
+        { to: "/dashboard/type-of-pet-sub-shop", label: "Sub Categories" },
+        { to: "/dashboard/pet-shop-product", label: "All Product" }
+
       ],
     },
     {
@@ -168,6 +182,7 @@ const DashboardPage = () => {
         { to: "/dashboard/schedule-vaccination", label: "Schedule Vaccination" },
       ],
     },
+
     {
       title: "Banners",
       icon: <ImageIcon className="h-5 w-5" />,
@@ -392,6 +407,16 @@ const DashboardPage = () => {
 
             <Route path="/physiotherapy" element={<AllPhysioTherapy />} />
             <Route path="/create-physiotherapy" element={<CreateAndEditPhysio />} />
+
+
+
+            <Route path="/coupons" element={<Coupon />} />
+
+
+
+            <Route path="/type-of-pet-shop" element={<PetShopCategories />} />
+            <Route path="/type-of-pet-sub-shop" element={<PetShopSubCategories />} />
+            <Route path="/pet-shop-product" element={<PetShopProducts />} />
 
 
 

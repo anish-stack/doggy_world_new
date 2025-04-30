@@ -6,7 +6,7 @@ exports.createPhysioTherepay = async (req, res) => {
     let publicIds = [];
     let images = [];
     const redis = req.app.get("redis");
-    console.log("i am start ")
+
     try {
         const {
             title,
@@ -128,7 +128,7 @@ exports.createPhysioTherepay = async (req, res) => {
 exports.getAllPhysioTherapies = async (req, res) => {
     const redis = req.app.get("redis");
     try {
-      
+
         if (redis) {
             const cachedData = await redis.get("physioTherapyList");
             if (cachedData) {
@@ -143,11 +143,11 @@ exports.getAllPhysioTherapies = async (req, res) => {
 
         // If not cached, fetch from database
         const therapies = await PhysioTherapy.find().sort({ position: 1 });
-        
+
         // Cache the results
         if (redis) {
             await redis.set("physioTherapyList", JSON.stringify(therapies), {
-                EX: 3600, 
+                EX: 3600,
             });
         }
 
@@ -171,16 +171,16 @@ exports.getAllPhysioTherapies = async (req, res) => {
 exports.getPhysioTherapyById = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const therapy = await PhysioTherapy.findById(id);
-        
+
         if (!therapy) {
             return res.status(404).json({
                 success: false,
                 message: "Physiotherapy service not found",
             });
         }
-        
+
         return res.status(200).json({
             success: true,
             message: "Retrieved physiotherapy service",
@@ -201,7 +201,7 @@ exports.updatePhysioTherapy = async (req, res) => {
     let publicIds = [];
     let newImages = [];
     const redis = req.app.get("redis");
-    
+
     try {
         const { id } = req.params;
         const {
@@ -213,96 +213,100 @@ exports.updatePhysioTherapy = async (req, res) => {
             discountPrice,
             popular,
             position,
-            removeImages, 
+            imagesToDelete,
         } = req.body;
-        
- 
+
         const therapy = await PhysioTherapy.findById(id);
-        
+
         if (!therapy) {
-            if (req.files) deleteMultipleFiles(req.files);
+            if (req.files) await deleteMultipleFiles(req.files);
             return res.status(404).json({
                 success: false,
                 message: "Physiotherapy service not found",
             });
         }
-        let numPos = Number(position)
-        
-        // Check if new position is already taken by another document
+
+        const numPos = Number(position);
+
+        // Check if position already taken
         if (numPos && numPos !== therapy.position) {
-            const checkValidPosition = await PhysioTherapy.findOne({ 
-                numPos, 
-                _id: { $ne: id } 
+            const checkValidPosition = await PhysioTherapy.findOne({
+                position: numPos,
+                _id: { $ne: id },
             });
-            
+
             if (checkValidPosition) {
-                if (req.files) deleteMultipleFiles(req.files);
+                if (req.files) await deleteMultipleFiles(req.files);
                 return res.status(403).json({
                     success: false,
-                    message: 'Position already taken by another service',
+                    message: "Position already taken by another service",
                 });
             }
         }
-        
-        // Handle price validation
+
+        // Validate price
         if (price && (isNaN(price) || Number(price) < 0)) {
-            if (req.files) deleteMultipleFiles(req.files);
+            if (req.files) await deleteMultipleFiles(req.files);
             return res.status(400).json({
                 success: false,
                 message: "Price must be a valid positive number",
             });
         }
-        
-        // Process image removal if requested
-        const existingImages = [...therapy.imageUrl];
-        if (removeImages && Array.isArray(removeImages) && removeImages.length > 0) {
-            // Convert string to array if needed
-            const idsToRemove = typeof removeImages === 'string' 
-                ? removeImages.split(',') 
-                : removeImages;
-            
-            // Delete images from cloud storage
-            await deleteMultipleFilesCloud(idsToRemove);
-            
-            // Remove images from the existing array
-            therapy.imageUrl = existingImages.filter(img => !idsToRemove.includes(img.public_id));
+
+        // Parse and handle imagesToDelete
+        let JsonRemove = [];
+        if (imagesToDelete) {
+            try {
+                JsonRemove = JSON.parse(imagesToDelete);
+            } catch (err) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid format for imagesToDelete",
+                });
+            }
         }
-        
-        // Process new file uploads
+
+        // Delete images from Cloudinary and local list
+        const existingImages = [...therapy.imageUrl];
+        if (Array.isArray(JsonRemove) && JsonRemove.length > 0) {
+            await deleteMultipleFilesCloud(JsonRemove);
+            therapy.imageUrl = existingImages.filter(img => !JsonRemove.includes(img.public_id));
+        }
+
+        // Handle new file uploads
         if (req.files && req.files.length > 0) {
             try {
                 const uploadResult = await uploadMultipleFiles(req.files);
-                let position = therapy.imageUrl.length + 1;
-                
+                let imgPos = therapy.imageUrl.length + 1;
+
                 uploadResult.forEach((img) => {
                     newImages.push({
                         url: img.url,
                         public_id: img.public_id,
-                        position: position++,
+                        position: imgPos++,
                     });
                     publicIds.push(img.public_id);
                 });
-                
-                // Add new images to existing ones
+
                 therapy.imageUrl = [...therapy.imageUrl, ...newImages];
             } catch (uploadError) {
-                if (req.files) deleteMultipleFiles(req.files);
+                if (req.files) await deleteMultipleFiles(req.files);
                 if (publicIds.length > 0) await deleteMultipleFilesCloud(publicIds);
-                
+
                 return res.status(500).json({
                     success: false,
                     message: `Error uploading images: ${uploadError.message}`,
                 });
             }
         }
-        
-        // Calculate discount percentage if price and discountPrice provided
+
+        // Calculate discount percentage
         let offPercentage = therapy.offPercentage;
         if (price && discountPrice) {
             offPercentage = Math.round(((price - discountPrice) / price) * 100);
         }
-        
-        // Update therapy fields
+
+        // Update fields
         therapy.title = title || therapy.title;
         therapy.smallDesc = smallDesc !== undefined ? smallDesc : therapy.smallDesc;
         therapy.description = description !== undefined ? description : therapy.description;
@@ -310,12 +314,12 @@ exports.updatePhysioTherapy = async (req, res) => {
         therapy.priceMinute = priceMinute !== undefined ? priceMinute : therapy.priceMinute;
         therapy.discountPrice = discountPrice !== undefined ? discountPrice : therapy.discountPrice;
         therapy.popular = popular !== undefined ? popular === "true" : therapy.popular;
-        therapy.position = position || therapy.position;
+        therapy.position = numPos || therapy.position;
         therapy.offPercentage = offPercentage;
-        
+
         const updatedTherapy = await therapy.save();
-        
-        // Clear Redis cache
+
+        // Clear Redis Cache
         if (redis) {
             try {
                 await redis.del("physioTherapyList");
@@ -324,16 +328,17 @@ exports.updatePhysioTherapy = async (req, res) => {
                 console.error("Redis error:", err);
             }
         }
-        
+
         return res.status(200).json({
             success: true,
             message: "Physiotherapy service updated successfully",
             data: updatedTherapy,
         });
+
     } catch (error) {
-        if (req.files) deleteMultipleFiles(req.files);
+        if (req.files) await deleteMultipleFiles(req.files);
         if (publicIds.length > 0) await deleteMultipleFilesCloud(publicIds);
-        
+
         console.error("Error in updatePhysioTherapy:", error);
         return res.status(500).json({
             success: false,
@@ -346,28 +351,28 @@ exports.updatePhysioTherapy = async (req, res) => {
 // Delete a physiotherapy service
 exports.deletePhysioTherapy = async (req, res) => {
     const redis = req.app.get("redis");
-    
+
     try {
         const { id } = req.params;
-        
+
         const therapy = await PhysioTherapy.findById(id);
-        
+
         if (!therapy) {
             return res.status(404).json({
                 success: false,
                 message: "Physiotherapy service not found",
             });
         }
-        
+
         // Delete associated images from cloud storage
         const imageIds = therapy.imageUrl.map(img => img.public_id);
         if (imageIds.length > 0) {
             await deleteMultipleFilesCloud(imageIds);
         }
-        
+
         // Delete the therapy document
         await PhysioTherapy.findByIdAndDelete(id);
-        
+
         // Clear Redis cache
         if (redis) {
             try {
@@ -377,7 +382,7 @@ exports.deletePhysioTherapy = async (req, res) => {
                 console.error("Redis error:", err);
             }
         }
-        
+
         return res.status(200).json({
             success: true,
             message: "Physiotherapy service deleted successfully",

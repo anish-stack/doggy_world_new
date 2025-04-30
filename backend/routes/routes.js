@@ -11,6 +11,9 @@ const { createSizeForCake, getAllCakeSizes, getCakeSizeById, updateCakeSize, del
 const { createPetBakery, getAllPetBakery, updatePetBakery, deletePetBakery, getSinglePetBakery } = require('../controller/Pet Bakery/petBakeryCategory');
 const { createBakeryProduct, getAllBakeryProducts, getBakeryProductById, updateBakeryProduct, deleteBakeryProduct } = require('../controller/Pet Bakery/petBakeryProducts');
 const { createPhysioTherepay, getAllPhysioTherapies, getPhysioTherapyById, updatePhysioTherapy, deletePhysioTherapy } = require('../controller/PhysioTherapy/PhysioTherapy');
+const { createCoupon, getCoupons, getCouponById, updateCoupon, deleteCoupon } = require('../controller/common/Coupon');
+const { createPetShopCategory, getAllPetShopCategories, getSinglePetShopCategory, updatePetShopCategory, deletePetShopCategory } = require('../controller/Pet Shops/PetShopCategories');
+const { createPetShopSubCategory, getAllPetShopSubCategories, getSinglePetShopSubCategory, updatePetShopSubCategory, deletePetShopSubCategory } = require('../controller/Pet Shops/PetShopSubCategories');
 
 const router = express.Router();
 
@@ -131,6 +134,30 @@ router.get('/get-physioTherapy', getAllPhysioTherapies);
 router.get('/get-physioTherapy/:id', getPhysioTherapyById);
 router.post('/update-physioTherapy/:id', upload.array("images"), updatePhysioTherapy);
 router.delete('/delete-physioTherapy/:id', upload.array("images"), deletePhysioTherapy);
+
+
+
+//create a new coupon route
+router.post('/create-coupon', createCoupon);
+router.get('/get-coupons', getCoupons);
+router.get('/get-coupon/:id', getCouponById);
+router.put('/update-coupon/:id', updateCoupon);
+router.delete('/delete-coupon/:id', deleteCoupon);
+
+//create a pet shop category route
+router.post('/petshop-category',upload.single("image"), createPetShopCategory);
+router.get('/petshop-category', getAllPetShopCategories);
+router.get('/petshop-category/:id', getSinglePetShopCategory);
+router.put('/petshop-category/:id',upload.single("image"), updatePetShopCategory);
+router.delete('/petshop-category/:id', deletePetShopCategory);
+
+
+//create a pet shop sub category route
+router.post('/petshop-sub-category',upload.single("image"), createPetShopSubCategory);
+router.get('/petshop-sub-category', getAllPetShopSubCategories);
+router.get('/petshop-sub-category/:id', getSinglePetShopSubCategory);
+router.post('/petshop-sub-category/:id',upload.single("image"), updatePetShopSubCategory);
+router.delete('/petshop-sub-category/:id', deletePetShopSubCategory);
 
 
 module.exports = router;

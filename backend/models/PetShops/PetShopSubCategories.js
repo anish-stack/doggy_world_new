@@ -18,9 +18,12 @@ const PetShopSubCategorySchema = new mongoose.Schema({
             trim: true,
         },
     },
-    description: {
-        type: String,
-        trim: true,
+    position: {
+        type: Number
+    },
+    active: {
+        type: Boolean,
+        default: false
     },
     parentCategory: [{
         type: mongoose.Schema.Types.ObjectId,
