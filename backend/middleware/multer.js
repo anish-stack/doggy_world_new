@@ -1,5 +1,6 @@
 const multer = require('multer');
 const fs = require('fs');
+const fsP = require('fs').promises;
 const path = require('path');
 
 // Multer storage setup
@@ -31,24 +32,25 @@ const deleteFile = (filePath) => {
 
 const deleteMultipleFiles = async (files) => {
   try {
-      // Check if files are passed
-      if (!files || files.length === 0) return;
+    if (!files || files.length === 0) return;
 
-      // Loop through each file and delete it
-      for (let file of files) {
-          if (file?.path) {
-              // If it's a local file, delete it
-              await fs.unlink(file.path);
-              console.log(`Deleted local file: ${file.path}`);
-          }
+    for (let file of files) {
+      if (file?.path) {
+        const filePath = path.resolve(file.path); // Use resolve to handle cross-platform paths
+        try {
+          await fsP.access(filePath);  // Check if file exists
+          await fsP.unlink(filePath);
+          console.log(`Deleted local file: ${filePath}`);
+        } catch (err) {
+          console.error(`File not found or already deleted: ${filePath}`);
+        }
       }
+    }
   } catch (error) {
-      console.error("Error deleting multiple files:", error);
-      throw new Error("Error deleting files");
+    console.error("Error deleting multiple files:", error);
+    throw new Error("Error deleting files");
   }
 };
-
-
 module.exports = {
   upload,
   deleteFile,

@@ -9,14 +9,18 @@ const PetShopSubCategorySchema = new mongoose.Schema({
     imageUrl: {
         url: {
             type: String,
-            required: [true, 'Image URL is required'],
+
             trim: true,
         },
         public_id: {
             type: String,
-            required: [true, 'Public ID is required'],
+
             trim: true,
         },
+    },
+    tag:{
+        type: String,
+
     },
     position: {
         type: Number

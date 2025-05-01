@@ -46,6 +46,16 @@ const petShopProductSchema = new mongoose.Schema({
         required: true,
         min: 0,
     },
+    discountPrice: {
+        type: Number,
+        required: true,
+        min: 0,
+    },
+    offPercentage: {
+        type: Number,
+        required: true,
+        min: 0,
+    },
     category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'PetShopSubCategory',
@@ -63,10 +73,17 @@ const petShopProductSchema = new mongoose.Schema({
             trim: true,
         },
     }],
-    createdAt: {
-        type: Date,
-        default: Date.now,
+    mainImage: {
+        url: {
+            type: String,
+            trim: true,
+        },
+        public_id: {
+            type: String,
+            trim: true,
+        }
     },
+
     isCod: {
         type: Boolean,
         default: false,

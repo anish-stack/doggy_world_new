@@ -59,6 +59,11 @@ import Coupon from "@/screens/coupons/coupon"
 import PetShopCategories from "@/screens/Pet Shop/PetShopCategories/PetShopCategories"
 import PetShopSubCategories from "@/screens/Pet Shop/PetShopSubCategories/PetShopSubCategories"
 import PetShopProducts from "@/screens/Pet Shop/PetShopProduct/PetShopProducts"
+import CreateAndEditProductShop from "@/screens/Pet Shop/PetShopProduct/CreateAndEdit"
+import Doctors from "@/screens/Doctors/Doctors"
+import AllClinincs from "@/screens/Clinics/AllClinincs"
+import CreateAndEditClinc from "@/screens/Clinics/CreateAndEditClinc"
+import SignInPage from "./SignInPage"
 
 const DashboardPage = () => {
   const location = useLocation()
@@ -374,6 +379,7 @@ const DashboardPage = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Routes>
+          {/* <Route path="/sign" element={<SignInPage />} /> */}
             <Route path="/" element={<DashboardHome />} />
             <Route path="/all-pets" element={<AllPets />} />
             <Route path="/all-pet-types" element={<PetTypes />} />
@@ -417,6 +423,14 @@ const DashboardPage = () => {
             <Route path="/type-of-pet-shop" element={<PetShopCategories />} />
             <Route path="/type-of-pet-sub-shop" element={<PetShopSubCategories />} />
             <Route path="/pet-shop-product" element={<PetShopProducts />} />
+            <Route path="/create-and-edit-pet-shop-categories" element={<CreateAndEditProductShop />} />
+
+            <Route path="/Doctors" element={<Doctors />} />
+
+
+
+            <Route path="/all-clinic" element={<AllClinincs />} />
+            <Route path="/add-new-clinic" element={<CreateAndEditClinc />} />
 
 
 

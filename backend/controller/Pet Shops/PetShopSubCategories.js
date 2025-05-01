@@ -100,7 +100,6 @@ exports.createPetShopSubCategory = async (req, res) => {
     }
 };
 
-
 exports.updatePetShopSubCategory = async (req, res) => {
     let publicIdToDelete = '';
     try {
@@ -113,9 +112,9 @@ exports.updatePetShopSubCategory = async (req, res) => {
             return res.status(404).json({ success: false, message: "Sub Category not found" });
         }
 
-        let num = Number(position)
+        let num = Number(position);
         if (num && num !== category.position) {
-            const exists = await PetShopSubCategoriesSchema.findOne({ num });
+            const exists = await PetShopSubCategoriesSchema.findOne({ position: num });
             if (exists) {
                 return res.status(400).json({ success: false, message: `Position ${position} is already taken.` });
             }
@@ -136,45 +135,41 @@ exports.updatePetShopSubCategory = async (req, res) => {
         category.position = position || category.position;
         category.active = active !== undefined ? active : category.active;
 
-     
-        let parent = [parentCategory]
+        // Parse and update parentCategory
+        let parent = parentCategory;
         let jsonparentCategory = [];
 
-        if (parent) {
-          try {
-            if (typeof parentCategory === 'string') {
-              if (parent.startsWith('[')) {
-                // JSON array string
-                jsonparentCategory = JSON.parse(parent);
-              } else {
-                // Comma-separated IDs (no quotes)
-                jsonparentCategory = parent.split(',').map(id => id.trim());
-              }
+        try {
+            if (typeof parent === 'string') {
+                if (parent.trim().startsWith('[')) {
+                    // JSON array string
+                    jsonparentCategory = JSON.parse(parent);
+                } else {
+                    // Comma-separated string
+                    jsonparentCategory = parent.split(',').map(id => id.trim());
+                }
             } else if (Array.isArray(parent)) {
-              // Already an array
-              jsonparentCategory = parent;
+                jsonparentCategory = parent;
             } else {
-              throw new Error("Invalid parent type");
+                throw new Error("Invalid parentCategory type");
             }
-        
-            // Optional: validate MongoDB ObjectIds
-            jsonparentCategory = jsonparentCategory.filter(id => mongoose.Types.ObjectId.isValid(id));
-        
+
             if (!Array.isArray(jsonparentCategory)) {
-              throw new Error("parentCategory is not an array");
+                throw new Error("parentCategory must be an array");
             }
-          } catch (e) {
+
+            // ✅ Replace the entire array of parentCategory
+            category.parentCategory = jsonparentCategory;
+
+        } catch (e) {
             if (req.file) await deleteFile(req.file.path);
             if (publicIdToDelete) await deleteFileCloud(publicIdToDelete);
             return res.status(400).json({
-              success: false,
-              message: "Invalid parentCategory format",
-              error: e.message
+                success: false,
+                message: "Invalid parentCategory format",
+                error: e.message
             });
-          }
         }
-        
-        
 
         await category.save();
 

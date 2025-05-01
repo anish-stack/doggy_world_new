@@ -14,6 +14,10 @@ const { createPhysioTherepay, getAllPhysioTherapies, getPhysioTherapyById, updat
 const { createCoupon, getCoupons, getCouponById, updateCoupon, deleteCoupon } = require('../controller/common/Coupon');
 const { createPetShopCategory, getAllPetShopCategories, getSinglePetShopCategory, updatePetShopCategory, deletePetShopCategory } = require('../controller/Pet Shops/PetShopCategories');
 const { createPetShopSubCategory, getAllPetShopSubCategories, getSinglePetShopSubCategory, updatePetShopSubCategory, deletePetShopSubCategory } = require('../controller/Pet Shops/PetShopSubCategories');
+const { createPetShopProduct, getAllPetProducts, getPetShopProductById, updatePetShopProduct, deletePetShopProduct } = require('../controller/Pet Shops/PetShopsProduct');
+const { createDoctors, editDoctor, deleteDoctor, getAllDoctors, getSingleDoctor } = require('../controller/Doctors/Doctors');
+const { clinicRegister, resendOTP, verifyOTP, getAllClinics, getClinicById, updateClinic, deleteClinic, clinicLogin, refreshToken, logout, validateToken, logoutAllDevices, clinicUser } = require('../controller/Clinics/Clinics');
+const { isAuthenticated, authorizeRoles } = require('../middleware/protect');
 
 const router = express.Router();
 
@@ -145,19 +149,51 @@ router.put('/update-coupon/:id', updateCoupon);
 router.delete('/delete-coupon/:id', deleteCoupon);
 
 //create a pet shop category route
-router.post('/petshop-category',upload.single("image"), createPetShopCategory);
+router.post('/petshop-category', upload.single("image"), createPetShopCategory);
 router.get('/petshop-category', getAllPetShopCategories);
 router.get('/petshop-category/:id', getSinglePetShopCategory);
-router.put('/petshop-category/:id',upload.single("image"), updatePetShopCategory);
+router.put('/petshop-category/:id', upload.single("image"), updatePetShopCategory);
 router.delete('/petshop-category/:id', deletePetShopCategory);
 
 
 //create a pet shop sub category route
-router.post('/petshop-sub-category',upload.single("image"), createPetShopSubCategory);
+router.post('/petshop-sub-category', upload.single("image"), createPetShopSubCategory);
 router.get('/petshop-sub-category', getAllPetShopSubCategories);
 router.get('/petshop-sub-category/:id', getSinglePetShopSubCategory);
-router.post('/petshop-sub-category/:id',upload.single("image"), updatePetShopSubCategory);
+router.post('/petshop-sub-category/:id', upload.single("image"), updatePetShopSubCategory);
 router.delete('/petshop-sub-category/:id', deletePetShopSubCategory);
+
+//create a pet shop  route
+router.post('/petshop-create-product', upload.array("images"), createPetShopProduct);
+router.get('/petshop-get-product', getAllPetProducts);
+router.get('/petshop-get-product/:id', getPetShopProductById);
+router.post('/petshop-update-product/:id', upload.array("images"), updatePetShopProduct);
+router.delete('/delete-shop-product/:id', deletePetShopProduct);
+
+
+//create a Display Doctor  route
+router.post('/doctors/create', upload.single("image"), createDoctors);
+router.put('/doctors/edit/:id', upload.single("image"), editDoctor);
+router.delete('/doctors/delete/:id', deleteDoctor);
+router.get('/doctors', getAllDoctors);
+router.get('/doctors/:id', getSingleDoctor);
+
+
+//create a Clinic regsiter
+router.post('/clinic/regsiter', isAuthenticated, authorizeRoles('admin'), upload.array("images"), clinicRegister);
+router.post('/clinic/resend-otp', resendOTP);
+router.post('/clinic/verify-otp', verifyOTP);
+router.get('/clinic/get-all-clinic', getAllClinics);
+router.get('/clinic/get-clinic/:id', getClinicById);
+router.post('/clinic/update/:id', upload.array("images"), updateClinic);
+router.delete('/clinic/delete/:id', deleteClinic);
+router.post('/clinic/login', clinicLogin);
+router.post('/dashboard-user', clinicUser);
+
+router.post('/refresh-token', refreshToken);
+router.get('/logout', isAuthenticated, logout);
+router.get('/validate-token', isAuthenticated, validateToken);
+router.get('/logout-all-devices', isAuthenticated, logoutAllDevices);
 
 
 module.exports = router;
