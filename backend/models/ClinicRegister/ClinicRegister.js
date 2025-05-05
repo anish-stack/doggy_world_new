@@ -147,4 +147,8 @@ ClinicSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
+ClinicSchema.methods.hasValidRefreshToken = async function (tokenRfresh) {
+    this.refreshTokens = this.refreshTokens.find(rt => rt.token !== tokenRfresh);
+};
+
 module.exports = mongoose.model('Clinic', ClinicSchema);

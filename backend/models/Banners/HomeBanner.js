@@ -22,10 +22,10 @@ const HomeBannerSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
+    position:{
+
     },
-});
+
+},{timestamps:true});
 
 module.exports = mongoose.model('HomeBanner', HomeBannerSchema);

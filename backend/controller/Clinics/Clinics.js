@@ -531,7 +531,7 @@ exports.refreshToken = async (req, res, next) => {
         }
 
         // Verify refresh token
-        const decoded = verifyRefreshToken00000(refreshToken);
+        const decoded = verifyRefreshToken(refreshToken);
 
         // Find user with the given refresh token
         const user = await ClinicRegister.findById(decoded.id);
@@ -657,12 +657,14 @@ exports.logoutAllDevices = async (req, res, next) => {
 exports.clinicUser = async (req, res, next) => {
     try {
         const userId = req.user.id;
+     
 
         const clinic = await ClinicRegister.findById(userId);
 
         if (!clinic) {
             return next(new ErrorResponse('Clinic not found', 404));
         }
+     
 
         res.status(200).json({
             success: true,

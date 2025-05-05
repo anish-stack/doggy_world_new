@@ -3,16 +3,16 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { API_URL } from "@/constant/Urls";
 import { useNavigate } from "react-router-dom";
-
+axios.defaults.withCredentials = true;
 
 // Create the Auth Context
 const AuthContext = createContext();
 
-// Cookie configuration for better security
+// Enhanced cookie configuration for persistence
 const COOKIE_OPTIONS = {
-  secure: false,
+  secure: false, // Set to true in production with HTTPS
   sameSite: "strict",
-  expires: 7,
+  expires: 30, // Increased from 7 to 30 days
   path: "/",
 };
 
@@ -20,51 +20,54 @@ const COOKIE_OPTIONS = {
 const TOKEN_NAME = "_usertoken";
 const REFRESH_TOKEN_NAME = "_refreshtoken";
 
+// Also use localStorage as backup
+const saveTokenToLocalStorage = (name, value) => {
+  if (value) {
+    localStorage.setItem(name, value);
+  }
+};
+
+const getTokenFromStorage = (name) => {
+  return Cookies.get(name) || localStorage.getItem(name);
+};
+
 export const AuthProvider = ({ children }) => {
   const router = useNavigate();
-  const [token, setToken] = useState(Cookies.get(TOKEN_NAME) || null);
-  const [refreshToken, setRefreshToken] = useState(Cookies.get(REFRESH_TOKEN_NAME) || null);
+  const [token, setToken] = useState(getTokenFromStorage(TOKEN_NAME) || null);
+  const [refreshToken, setRefreshToken] = useState(getTokenFromStorage(REFRESH_TOKEN_NAME) || null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [tokenExpiry, setTokenExpiry] = useState(null);
-
 
   const secureAxios = axios.create({
     baseURL: API_URL,
     withCredentials: true,
   });
 
-
   secureAxios.interceptors.response.use(
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
 
-
       if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
         originalRequest._retry = true;
 
         try {
-
-
           const response = await axios.post(`${API_URL}/refresh-token`, {
             refreshToken,
           });
 
-
           const { token: newToken, refreshToken: newRefreshToken } = response.data;
 
-
           setTokens(newToken, newRefreshToken);
-
 
           originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
           return axios(originalRequest);
         } catch (refreshError) {
-
-          handleLogout();
+          // Don't immediately logout on refresh error
+          console.error("Token refresh failed:", refreshError);
           return Promise.reject(refreshError);
         }
       }
@@ -73,10 +76,11 @@ export const AuthProvider = ({ children }) => {
     }
   );
 
-
   const setTokens = useCallback((accessToken, refresh = null) => {
     if (accessToken) {
+      // Set in both cookies and localStorage for redundancy
       Cookies.set(TOKEN_NAME, accessToken, COOKIE_OPTIONS);
+      saveTokenToLocalStorage(TOKEN_NAME, accessToken);
       setToken(accessToken);
 
       try {
@@ -90,62 +94,103 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (refresh) {
+      // Set refresh token in both cookies and localStorage
       Cookies.set(REFRESH_TOKEN_NAME, refresh, COOKIE_OPTIONS);
+      saveTokenToLocalStorage(REFRESH_TOKEN_NAME, refresh);
       setRefreshToken(refresh);
     }
   }, []);
 
-
   const loadUser = useCallback(async () => {
-    if (!token) {
+    console.log("🔁 loadUser called", getTokenFromStorage(TOKEN_NAME));
+  
+    // First, check if we have tokens in either cookies or localStorage
+    const currentToken = getTokenFromStorage(TOKEN_NAME);
+    const currentRefreshToken = getTokenFromStorage(REFRESH_TOKEN_NAME);
+    
+    // Update state with any found tokens
+    if (currentToken && currentToken !== token) {
+      setToken(currentToken);
+    }
+    
+    if (currentRefreshToken && currentRefreshToken !== refreshToken) {
+      setRefreshToken(currentRefreshToken);
+    }
+  
+    if (!currentToken) {
+      console.log("⛔ No token found");
       setLoading(false);
       return;
     }
-
+  
     try {
-
+      console.log("✅ Token found:", currentToken);
+  
+      if (tokenExpiry) {
+        console.log("⏰ Token expiry time:", tokenExpiry);
+      }
+  
       if (tokenExpiry && Date.now() > tokenExpiry) {
-
-        if (refreshToken) {
-
+        console.log("⚠️ Token expired");
+  
+        if (currentRefreshToken) {
+          console.log("🔄 Refresh token available, trying to refresh...");
+  
           const refreshResponse = await axios.post(`${API_URL}/refresh-token`, {
-            refreshToken,
+            refreshToken: currentRefreshToken,
           });
-
+  
+          console.log("✅ Token refreshed:", refreshResponse.data.token);
           setTokens(refreshResponse.data.token, refreshResponse.data.refreshToken);
         } else {
+          console.log("⛔ No refresh token available, session expired");
           throw new Error("Session expired");
         }
       }
-
+  
+      console.log("📡 Sending request to load user");
+  
       const response = await secureAxios.get(
-        `/dashboard-user`,
+        `http://localhost:8000/api/v1/dashboard-user`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${currentToken}`,
           },
         }
       );
-
-      setUser(response.data.user);
+  
+      console.log("✅ User loaded successfully:", response.data);
+  
+      setUser(response.data.data);
       setIsAuthenticated(true);
       setError(null);
     } catch (err) {
-      console.error("Authentication error:", err);
-      setError(err.response?.data?.message || "Session expired. Please log in again.");
-
-      // Clear authentication if token is invalid
-      if (err.response?.status === 401) {
-        clearAuthState();
-      }
+      console.error("❌ Authentication error:", err);
+  
+      const errorMessage = err.response?.data?.message || "Session expired. Please log in again.";
+      setError(errorMessage);
+      console.log("⚠️ Error message set:", errorMessage);
+  
+      // Don't clear auth state on 401 - let the token refresh mechanism try first
+      // Only logout if specifically requested
     } finally {
+      console.log("🔚 Finished loadUser");
       setLoading(false);
     }
   }, [token, refreshToken, tokenExpiry, setTokens]);
-
-  // Effect to load user on mount or token change
+  
   useEffect(() => {
     loadUser();
+    
+    // Add event listener to detect local storage changes from other tabs
+    const handleStorageChange = (e) => {
+      if (e.key === TOKEN_NAME || e.key === REFRESH_TOKEN_NAME) {
+        loadUser();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [loadUser]);
 
   // Effect to refresh token before expiry
@@ -178,10 +223,8 @@ export const AuthProvider = ({ children }) => {
       setTokens(response.data.token, response.data.refreshToken);
     } catch (err) {
       console.error("Token refresh failed:", err);
-      // If refresh fails, user needs to re-authenticate
-      if (isAuthenticated) {
-        handleLogout();
-      }
+      // Don't automatically logout on refresh failure
+      // The user might still have a valid session
     }
   };
 
@@ -189,6 +232,8 @@ export const AuthProvider = ({ children }) => {
   const clearAuthState = () => {
     Cookies.remove(TOKEN_NAME, { path: "/" });
     Cookies.remove(REFRESH_TOKEN_NAME, { path: "/" });
+    localStorage.removeItem(TOKEN_NAME);
+    localStorage.removeItem(REFRESH_TOKEN_NAME);
     setToken(null);
     setRefreshToken(null);
     setUser(null);
@@ -210,8 +255,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn("Logout error:", err);
     } finally {
-      // clearAuthState();
-      // router("/");
+      clearAuthState();
+      router("/");
     }
   };
 
@@ -228,12 +273,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Email and password are required");
       }
 
-
       const response = await axios.post(`${API_URL}/clinic/login`, {
         email,
         password,
       });
-      console.log(response)
+      console.log(response);
 
       const { token: accessToken, refreshToken: newRefreshToken, user: userData } = response.data;
 
@@ -256,9 +300,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-
-
-
 
   const validateToken = async () => {
     if (!token) return false;

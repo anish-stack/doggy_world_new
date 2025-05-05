@@ -18,6 +18,9 @@ const ConsultationSchema = new mongoose.Schema({
         min: 0,
         max: 100
     },
+    position:{
+        type: Number,
+    },
     discount_price: {
         type: Number,
         min: 0
@@ -43,8 +46,8 @@ const ConsultationSchema = new mongoose.Schema({
         required: false
     },
     offer_valid_upto_date: {
-        type: Date,
-        required: false
+        type: String,
+       
     },
     description: {
         type: String,

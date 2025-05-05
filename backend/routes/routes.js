@@ -18,6 +18,14 @@ const { createPetShopProduct, getAllPetProducts, getPetShopProductById, updatePe
 const { createDoctors, editDoctor, deleteDoctor, getAllDoctors, getSingleDoctor } = require('../controller/Doctors/Doctors');
 const { clinicRegister, resendOTP, verifyOTP, getAllClinics, getClinicById, updateClinic, deleteClinic, clinicLogin, refreshToken, logout, validateToken, logoutAllDevices, clinicUser } = require('../controller/Clinics/Clinics');
 const { isAuthenticated, authorizeRoles } = require('../middleware/protect');
+const { createHomeBanner, updateHomeBanner, deleteHomeBanner, getAllHomeBanners, getHomeBannerById } = require('../controller/HomeBanner/HomeBanner');
+const { createAServiceBanners, updateServiceBanner, deleteServiceBanner, getAllServiceBanners, getServiceBannersByType } = require('../controller/HomeBanner/ServiceBanner');
+const { createBlogs, getAllBlogs, getSingleBlog, updateBlog, deleteBlog } = require('../controller/Blogs/Blogs');
+const { CreateGrommingService, GetAllGroomingServices, GetSingleGroomingService, UpdateGroomingService, DeleteGroomingService } = require('../controller/Grooming/Grooming');
+const { CreateGroomingPackage, GetAllGroomingPackages, GetSingleGroomingPackage, UpdateGroomingPackage, DeleteGroomingPackage } = require('../controller/Grooming/GroomingPackages');
+const { createGroomingPackagejson, getAllGroomingPackagesjson, getGroomingPackageByIdjson, updateGroomingPackagejson, deleteGroomingPackagejson } = require('../controller/Grooming/GroomingPackagejson');
+const { createConsultation, updateConsultation, deleteConsultation, getAllConsultations, getSingleConsultation } = require('../controller/Consultations/Consultation');
+const { createDoctorConsultation, getAllDoctorConsultations, getSingleDoctorConsultation, updateDoctorConsultation, deleteDoctorConsultation } = require('../controller/Consultations/AvailableDoctors');
 
 const router = express.Router();
 
@@ -188,12 +196,76 @@ router.get('/clinic/get-clinic/:id', getClinicById);
 router.post('/clinic/update/:id', upload.array("images"), updateClinic);
 router.delete('/clinic/delete/:id', deleteClinic);
 router.post('/clinic/login', clinicLogin);
-router.post('/dashboard-user', clinicUser);
+router.get('/dashboard-user', isAuthenticated, clinicUser);
 
 router.post('/refresh-token', refreshToken);
 router.get('/logout', isAuthenticated, logout);
 router.get('/validate-token', isAuthenticated, validateToken);
 router.get('/logout-all-devices', isAuthenticated, logoutAllDevices);
+
+
+
+//create a Home Banner 
+
+router.post('/home-banner', upload.single("image"), createHomeBanner);
+router.get('/home-banner', getAllHomeBanners);
+router.get('/home-banner/:id', getHomeBannerById);
+router.post('/home-banner/:id', upload.single("image"), updateHomeBanner);
+router.delete('/home-banner/:id', deleteHomeBanner);
+
+router.post('/service-banner', upload.array("images"), createAServiceBanners);
+router.post('/service-banner/:id', upload.array("images"), updateServiceBanner);
+router.delete('/service-banner/:id', deleteServiceBanner);
+router.get('/service-banner', getAllServiceBanners);
+router.get('/service-banner/:type', getServiceBannersByType);
+
+//create a Blogs 
+
+router.post('/blogs', upload.array("images"), createBlogs);
+router.post('/blogs/:id', upload.array("images"), updateBlog);
+router.delete('/blogs/:id', deleteBlog);
+router.get('/blogs', getAllBlogs);
+router.get('/blogs/:id', getSingleBlog);
+
+
+//create a Grooming Services Routes 
+router.post('/grooming-service', upload.single("image"), CreateGrommingService);
+router.post('/grooming-service/:id', upload.single("image"), UpdateGroomingService);
+router.delete('/grooming-service/:id', DeleteGroomingService);
+router.get('/grooming-service', GetAllGroomingServices);
+router.get('/grooming-service/:id', GetSingleGroomingService);
+
+//create a Grooming Services Packages 
+router.post('/grooming-service-package', CreateGroomingPackage);
+router.post('/grooming-service-package/:id', UpdateGroomingPackage);
+router.delete('/grooming-service-package/:id', DeleteGroomingPackage);
+router.get('/grooming-service-package', GetAllGroomingPackages);
+router.get('/grooming-service-package/:id', GetSingleGroomingPackage);
+
+//create a Grooming Services Packages 
+router.post("/grooming-service-package-json", createGroomingPackagejson);
+router.get("/grooming-service-package-json", getAllGroomingPackagesjson);
+router.get("/grooming-service-package-json/:id", getGroomingPackageByIdjson);
+router.put("/grooming-service-package-json/:id", updateGroomingPackagejson);
+router.delete("/grooming-service-package-json/:id", deleteGroomingPackagejson);
+
+//create a Consultation 
+router.post('/consultation-types', upload.single("image"), createConsultation);
+router.post('/consultation-types/:id', upload.single("image"), updateConsultation);
+router.delete('/consultation-types/:id', deleteConsultation);
+router.get('/consultation-types', getAllConsultations);
+router.get('/consultation-types/:id', getSingleConsultation);
+
+
+//create a  Doctor Consultation 
+
+router.post('/consultation-doctor', upload.single("image"), createDoctorConsultation);
+router.post('/consultation-doctor/:id', upload.single("image"), updateDoctorConsultation);
+router.delete('/consultation-doctor/:id', deleteDoctorConsultation);
+router.get('/consultation-doctor', getAllDoctorConsultations);
+router.get('/consultation-doctor/:id', getSingleDoctorConsultation);
+
+
 
 
 module.exports = router;

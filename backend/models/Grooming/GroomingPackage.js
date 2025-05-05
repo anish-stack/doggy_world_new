@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const GroomingPackageSchema = new mongoose.Schema({
-    GroomingService: {
+    groomingService: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'GroomingService',
         required: true

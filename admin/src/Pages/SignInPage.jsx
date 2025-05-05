@@ -28,10 +28,10 @@ const SignInPage = () => {
     
     try {
       const cred = {email, password}
-      const data = await login(cred);
-      console.log(data)
+    await login(cred);
+
       toast.success("Signed in successfully!");
-      // navigate("/dashboard");
+      navigate("/dashboard");
     } catch (error) {
       toast.error(error.message || "Failed to sign in. Please try again.");
     } finally {

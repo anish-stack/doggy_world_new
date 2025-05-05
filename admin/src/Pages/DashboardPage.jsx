@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Link, Route, Routes, Navigate, useLocation } from "react-router-dom"
+import { useContext, useState, useEffect } from "react"
+import { Link, Route, Routes, Navigate, useLocation, useNavigate } from "react-router-dom"
 import {
   ChevronDown,
   ChevronUp,
@@ -22,6 +22,7 @@ import {
   Dog,
   Cat,
   ShoppingCart,
+  AlertCircle
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -64,10 +65,37 @@ import Doctors from "@/screens/Doctors/Doctors"
 import AllClinincs from "@/screens/Clinics/AllClinincs"
 import CreateAndEditClinc from "@/screens/Clinics/CreateAndEditClinc"
 import SignInPage from "./SignInPage"
+import AuthContext from "@/context/authContext"
+import AccessDenied from "./AccessDenied"
+import AllHomeBanners from "@/screens/Banners/HomeBanners/AllHomeBanners"
+import CreateAndEditHomeBanner from "@/screens/Banners/HomeBanners/CreateAndEditHomeBanner"
+import AllServiceBanners from "@/screens/Banners/ServiceBanners/AllServiceBanners"
+import CreateAndEditServiceBanner from "@/screens/Banners/ServiceBanners/CreateAndEditServiceBanner"
+import AllBlogs from "@/screens/Blogs/AllBlogs"
+import CreateAndEditBlogs from "@/screens/Blogs/CreateAndEditBlogs"
+import AllGrooming from "@/screens/Grooming/AllGrooming"
+import AllGroomingPackage from "@/screens/Grooming/AllGroomingPackage"
+
 
 const DashboardPage = () => {
   const location = useLocation()
+  const navigate = useNavigate()
   const [openSections, setOpenSections] = useState({})
+  const { user, logout, isAuthenticated } = useContext(AuthContext)
+
+  // Check if user is authenticated
+  useEffect(() => {
+    console.log("mai login hu", isAuthenticated)
+
+    setTimeout(() => {
+      if (!isAuthenticated) {
+        console.log("mai redirect ho raha hu")
+
+        navigate("/signin")
+      }
+    }, 5000)
+
+  }, [])
 
   const toggleSection = (title) => {
     setOpenSections((prev) => ({
@@ -76,7 +104,77 @@ const DashboardPage = () => {
     }))
   }
 
-  // Define menu structure based on the provided categories
+  // Define access control settings per role
+  const roleAccess = {
+    admin: {
+
+      all: true,
+      restricted: []
+    },
+    clinic: {
+      all: false,
+
+      allowed: [
+        "/dashboard",
+        "/dashboard/all-pets",
+        "/dashboard/all-pet-types",
+        "/dashboard/create-physiotherapy",
+        "/dashboard/all-vaccination",
+        "/dashboard/schedule-vaccination",
+        "/dashboard/doctors",
+        "/dashboard/pet-shop-order",
+        "/dashboard/bakery-order",
+        "/dashboard/cake-order",
+        "/dashboard/grooming-booking",
+        "/dashboard/consultation-booking",
+        "/dashboard/vaccination-booking",
+        "/dashboard/lab-test-booking",
+        "/dashboard/physiotherapy-booking",
+        "/dashboard/all-consultations",
+        "/dashboard/all-clinic"
+      ],
+
+      allowedSections: [
+        "Dashboard",
+        "Pets",
+        "Orders",
+        "Bookings",
+        "Vaccination",
+        "Doctors",
+        "Consultations",
+        "Clinic"
+      ]
+    }
+  }
+  const hasAccess = (path) => {
+
+
+    if (!isAuthenticated) {
+
+      return false;
+    }
+
+    if (user.role === 'admin') {
+      return true;
+    }
+
+    const clinicAccess = roleAccess.clinic.allowed;
+    const isAllowed = clinicAccess.some(route => {
+      return path === route;
+    });
+
+    return isAllowed;
+  };
+
+
+  // Check if user has access to a section
+  const hasSectionAccess = (sectionTitle) => {
+    if (!user) return false
+    if (user.role === 'admin') return true
+
+    return roleAccess.clinic.allowedSections.includes(sectionTitle)
+  }
+
   const menuSections = [
     {
       title: "Dashboard",
@@ -105,7 +203,6 @@ const DashboardPage = () => {
         { to: "/dashboard/physiotherapy-booking", label: "Physiotherapy Booking" },
       ],
     },
-
     {
       title: "Coupons",
       icon: <Tag className="h-5 w-5" />,
@@ -128,7 +225,6 @@ const DashboardPage = () => {
         { to: "/dashboard/type-of-pet-shop", label: "Pet Shop Categories" },
         { to: "/dashboard/type-of-pet-sub-shop", label: "Sub Categories" },
         { to: "/dashboard/pet-shop-product", label: "All Product" }
-
       ],
     },
     {
@@ -187,7 +283,6 @@ const DashboardPage = () => {
         { to: "/dashboard/schedule-vaccination", label: "Schedule Vaccination" },
       ],
     },
-
     {
       title: "Banners",
       icon: <ImageIcon className="h-5 w-5" />,
@@ -215,8 +310,8 @@ const DashboardPage = () => {
       title: "Blogs",
       icon: <FileText className="h-5 w-5" />,
       items: [
-        { to: "/dashboard/all-blogs", label: "All Blogs" },
-        { to: "/dashboard/create-blogs", label: "Create Blogs" },
+        { to: "/dashboard/all-blogs", label: "All Blogs" }
+
       ],
     },
   ]
@@ -224,65 +319,104 @@ const DashboardPage = () => {
   const isActive = (path) => location.pathname === path
 
   // Render a single menu item
-  const renderSingleMenuItem = (section) => (
-    <Link key={section.to} to={section.to}>
-      <Button variant={isActive(section.to) ? "secondary" : "ghost"} className="w-full justify-start gap-2 font-medium">
-        {section.icon}
-        <span>{section.label}</span>
-        {isActive(section.to) && (
-          <Badge className="ml-auto h-5 py-0" variant="outline">
-            Active
-          </Badge>
-        )}
-      </Button>
-    </Link>
-  )
+  const renderSingleMenuItem = (section) => {
+    const canAccess = hasAccess(section.to);
 
-  // Render a collapsible menu section
-  const renderCollapsibleMenu = (section) => (
-    <Collapsible
-      key={section.title}
-      open={openSections[section.title]}
-      onOpenChange={() => toggleSection(section.title)}
-      className="w-full"
-    >
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" className="w-full justify-between font-medium">
-          <div className="flex items-center gap-2">
+    if (!canAccess) return null; // ❌ No access, don't render
+
+    return (
+      <div key={section.to} className="relative">
+        <Link to={section.to}>
+          <Button
+            variant={isActive(section.to) ? "secondary" : "ghost"}
+            className="w-full justify-start gap-2 font-medium"
+          >
             {section.icon}
-            <span>{section.title}</span>
-          </div>
-          {openSections[section.title] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pl-8 space-y-1">
-        {section.items.map(({ to, label }) => (
-          <Link key={to} to={to}>
-            <Button
-              variant={isActive(to) ? "secondary" : "ghost"}
-              size="sm"
-              className="w-full justify-start gap-2 font-normal"
-            >
-              <span>{label}</span>
-              {isActive(to) && (
-                <Badge className="ml-auto h-5 py-0" variant="outline">
-                  Active
-                </Badge>
-              )}
-            </Button>
-          </Link>
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
-  )
+            <span>{section.label}</span>
+            {isActive(section.to) && (
+              <Badge className="ml-auto h-5 py-0" variant="outline">
+                Active
+              </Badge>
+            )}
+          </Button>
+        </Link>
+      </div>
+    );
+  };
+
+
+
+  const renderCollapsibleMenu = (section) => {
+    const sectionHasAccess = hasSectionAccess(section.title);
+    const hasAccessibleItems = section.items.some(item => hasAccess(item.to));
+
+    // ❌ No access at all — skip rendering
+    if (!sectionHasAccess && !hasAccessibleItems && user?.role === 'clinic') {
+      return null;
+    }
+
+    return (
+      <Collapsible
+        key={section.title}
+        open={openSections[section.title]}
+        onOpenChange={() => toggleSection(section.title)}
+        className="w-full"
+      >
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full justify-between font-medium"
+          >
+            <div className="flex items-center gap-2">
+              {section.icon}
+              <span>{section.title}</span>
+            </div>
+            {openSections[section.title] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-8 space-y-1">
+          {section.items
+            .filter(item => hasAccess(item.to)) // ✅ Only render accessible items
+            .map(({ to, label }) => (
+              <div key={to} className="relative">
+                <Link to={to}>
+                  <Button
+                    variant={isActive(to) ? "secondary" : "ghost"}
+                    size="sm"
+                    className="w-full justify-start gap-2 font-normal"
+                  >
+                    <span>{label}</span>
+                    {isActive(to) && (
+                      <Badge className="ml-auto h-5 py-0" variant="outline">
+                        Active
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              </div>
+            ))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    navigate("/signin");
+  }
+
+  if (!user) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Fixed Desktop Sidebar */}
-      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 border-r bg-white z-10 overflow-hidden flex flex-col">
+      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 border-r bg-white z-10 overflow-hidden flex-col">
         <div className="p-4 flex items-center gap-2 border-b">
-          <MessageSquare className="h-6 w-6 text-indigo-600" />
-          <span className="font-bold text-xl">PetCare Admin</span>
+          <span className="font-bold text-md">{user?.role === 'admin' ? 'Doggy World Care Admin' : 'Doggy World Care Clinic'}</span>
         </div>
 
         <ScrollArea className="flex-1 px-3 py-2 h-[calc(100vh-9rem)]">
@@ -298,11 +432,11 @@ const DashboardPage = () => {
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarImage src="/avatars/admin.png" />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarFallback>{user?.role === 'admin' ? 'AD' : 'CL'}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-gray-500">admin@petcare.com</p>
+                <p className="text-sm font-medium">{user?.role === 'admin' ? 'Admin' : 'Clinic'}</p>
+                <p className="text-xs text-gray-500">{user?.email || ''}</p>
               </div>
             </div>
             <DropdownMenu>
@@ -317,7 +451,7 @@ const DashboardPage = () => {
                 <DropdownMenuItem>Profile</DropdownMenuItem>
                 <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </DropdownMenuItem>
@@ -341,8 +475,7 @@ const DashboardPage = () => {
               <SheetContent side="left" className="w-64 p-0">
                 <SheetHeader className="p-4 border-b">
                   <SheetTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-6 w-6 text-indigo-600" />
-                    <span>PetCare Admin</span>
+                    {user?.role === 'admin' ? 'Admin Dashboard' : 'Clinic Dashboard'}
                   </SheetTitle>
                 </SheetHeader>
                 <ScrollArea className="h-[calc(100vh-9rem)]">
@@ -355,19 +488,19 @@ const DashboardPage = () => {
                   </div>
                 </ScrollArea>
                 <div className="p-4 border-t mt-auto">
-                  <Button variant="destructive" className="w-full gap-2">
+                  <Button onClick={handleLogout} variant="destructive" className="w-full gap-2">
                     <LogOut className="h-4 w-4" />
                     Logout
                   </Button>
                 </div>
               </SheetContent>
             </Sheet>
-            <span className="font-bold text-lg">PetCare Admin</span>
+            <span className="font-bold text-lg">{user?.role === 'admin' ? 'Admin Dashboard' : 'Clinic Dashboard'}</span>
           </div>
 
           <Avatar>
             <AvatarImage src="/avatars/admin.png" />
-            <AvatarFallback>AD</AvatarFallback>
+            <AvatarFallback>{user?.role === 'admin' ? 'AD' : 'CL'}</AvatarFallback>
           </Avatar>
         </header>
 
@@ -379,61 +512,75 @@ const DashboardPage = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Routes>
-          {/* <Route path="/sign" element={<SignInPage />} /> */}
+
             <Route path="/" element={<DashboardHome />} />
-            <Route path="/all-pets" element={<AllPets />} />
-            <Route path="/all-pet-types" element={<PetTypes />} />
 
+            {/* Pets Routes */}
+            <Route path="/all-pets" element={hasAccess("/dashboard/all-pets") ? <AllPets /> : <AccessDenied />} />
+            <Route path="/all-pet-types" element={hasAccess("/dashboard/all-pet-types") ? <PetTypes /> : <AccessDenied />} />
 
-
-            {/* Main Categiry */}
-            <Route path="/main-category" element={<MainCategory />} />
+            {/* Main Category */}
+            <Route path="/main-category" element={hasAccess("/dashboard/main-category") ? <MainCategory /> : <AccessDenied />} />
 
             {/* Vaccine */}
-            <Route path="/type-of-vaccination-collection" element={<AllCollectionVaccines />} />
-            <Route path="/all-vaccination" element={<AllVaccines />} />
-            <Route path="/edit-vaccination-product/:id" element={<EditVaccines />} />
-            <Route path="/create-vaccination-product" element={<CreateVaccines />} />
-
+            <Route path="/type-of-vaccination-collection" element={hasAccess("/dashboard/type-of-vaccination-collection") ? <AllCollectionVaccines /> : <AccessDenied />} />
+            <Route path="/all-vaccination" element={hasAccess("/dashboard/all-vaccination") ? <AllVaccines /> : <AccessDenied />} />
+            <Route path="/edit-vaccination-product/:id" element={hasAccess("/dashboard/edit-vaccination-product") ? <EditVaccines /> : <AccessDenied />} />
+            <Route path="/create-vaccination-product" element={hasAccess("/dashboard/create-vaccination-product") ? <CreateVaccines /> : <AccessDenied />} />
 
             {/* Cakes design  */}
-            <Route path="/all-design" element={<AllDesign />} />
-
-            <Route path="/all-flavors" element={<AllFlavours />} />
-            <Route path="/all-sizes" element={<AllSizes />} />
-
+            <Route path="/all-design" element={hasAccess("/dashboard/all-design") ? <AllDesign /> : <AccessDenied />} />
+            <Route path="/all-flavors" element={hasAccess("/dashboard/all-flavors") ? <AllFlavours /> : <AccessDenied />} />
+            <Route path="/all-sizes" element={hasAccess("/dashboard/all-sizes") ? <AllSizes /> : <AccessDenied />} />
 
             {/* Pet Bakery  */}
-            <Route path="/pet-bakery-categories" element={<AllBakeryCategories />} />
-            <Route path="/pet-bakery-products" element={<AllBakeryProducts />} />
-            <Route path="/create-and-edit-pet-bakery-categories" element={<CreateAndEdit />} />
+            <Route path="/pet-bakery-categories" element={hasAccess("/dashboard/pet-bakery-categories") ? <AllBakeryCategories /> : <AccessDenied />} />
+            <Route path="/pet-bakery-products" element={hasAccess("/dashboard/pet-bakery-products") ? <AllBakeryProducts /> : <AccessDenied />} />
+            <Route path="/create-and-edit-pet-bakery-categories" element={hasAccess("/dashboard/create-and-edit-pet-bakery-categories") ? <CreateAndEdit /> : <AccessDenied />} />
+
+            {/* Physiotherapy */}
+            <Route path="/physiotherapy" element={hasAccess("/dashboard/physiotherapy") ? <AllPhysioTherapy /> : <AccessDenied />} />
+            <Route path="/create-physiotherapy" element={hasAccess("/dashboard/create-physiotherapy") ? <CreateAndEditPhysio /> : <AccessDenied />} />
+
+            {/* Coupons */}
+            <Route path="/coupons" element={hasAccess("/dashboard/coupons") ? <Coupon /> : <AccessDenied />} />
+
+            {/* Pet Shop */}
+            <Route path="/type-of-pet-shop" element={hasAccess("/dashboard/type-of-pet-shop") ? <PetShopCategories /> : <AccessDenied />} />
+            <Route path="/type-of-pet-sub-shop" element={hasAccess("/dashboard/type-of-pet-sub-shop") ? <PetShopSubCategories /> : <AccessDenied />} />
+            <Route path="/pet-shop-product" element={hasAccess("/dashboard/pet-shop-product") ? <PetShopProducts /> : <AccessDenied />} />
+            <Route path="/create-and-edit-pet-shop-categories" element={hasAccess("/dashboard/create-and-edit-pet-shop-categories") ? <CreateAndEditProductShop /> : <AccessDenied />} />
+
+            {/* Doctors */}
+            <Route path="/doctors" element={hasAccess("/dashboard/doctors") ? <Doctors /> : <AccessDenied />} />
+
+            {/* Clinic */}
+            <Route path="/all-clinic" element={hasAccess("/dashboard/all-clinic") ? <AllClinincs /> : <AccessDenied />} />
+            <Route path="/add-new-clinic" element={hasAccess("/dashboard/add-new-clinic") ? <CreateAndEditClinc /> : <AccessDenied />} />
+
+            {/* Banners */}
+            <Route path="/home-screen-banners" element={hasAccess("/dashboard/home-screen-banners") ? <AllHomeBanners /> : <AccessDenied />} />
+            <Route path="/banners/home/edit/:id" element={hasAccess("/dashboard/banners/home/edit/:id") ? <CreateAndEditHomeBanner /> : <AccessDenied />} />
+            <Route path="/banners/home/create" element={hasAccess("/dashboard/banners/home/create") ? <CreateAndEditHomeBanner /> : <AccessDenied />} />
+            <Route path="/service-banners" element={hasAccess("/dashboard/service-banners") ? <AllServiceBanners /> : <AccessDenied />} />
+            <Route path="/service-banners/home/create" element={hasAccess("/dashboard/service-banners/home/create") ? <CreateAndEditServiceBanner /> : <AccessDenied />} />
+            <Route path="/service-banners/home/edit/:id" element={hasAccess("/dashboard/service-banners/home/edit/:id") ? <CreateAndEditServiceBanner /> : <AccessDenied />} />
+
+            {/* Blogs */}
+
+            <Route path="/all-blogs" element={hasAccess("/dashboard/all-blogs") ? <AllBlogs /> : <AccessDenied />} />
+            <Route path="/blogs/create" element={hasAccess("/dashboard/blogs/create") ? <CreateAndEditBlogs /> : <AccessDenied />} />
+            <Route path="/blogs/edit/:id" element={hasAccess("/dashboard/blogs/edit/:id") ? <CreateAndEditBlogs /> : <AccessDenied />} />
+
+
+            {/* Grooming */}
+
+            <Route path="/all-grooming-service" element={hasAccess("/dashboard/all-grooming-service") ? <AllGrooming /> : <AccessDenied />} />
+            <Route path="/grooming-packages" element={hasAccess("/dashboard/grooming-packages") ? <AllGroomingPackage /> : <AccessDenied />} />
 
 
 
-
-            <Route path="/physiotherapy" element={<AllPhysioTherapy />} />
-            <Route path="/create-physiotherapy" element={<CreateAndEditPhysio />} />
-
-
-
-            <Route path="/coupons" element={<Coupon />} />
-
-
-
-            <Route path="/type-of-pet-shop" element={<PetShopCategories />} />
-            <Route path="/type-of-pet-sub-shop" element={<PetShopSubCategories />} />
-            <Route path="/pet-shop-product" element={<PetShopProducts />} />
-            <Route path="/create-and-edit-pet-shop-categories" element={<CreateAndEditProductShop />} />
-
-            <Route path="/Doctors" element={<Doctors />} />
-
-
-
-            <Route path="/all-clinic" element={<AllClinincs />} />
-            <Route path="/add-new-clinic" element={<CreateAndEditClinc />} />
-
-
-
+            {/* Redirect unknown paths to dashboard home */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

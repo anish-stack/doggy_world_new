@@ -54,6 +54,9 @@ const GroomingServiceSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        position:{
+            type:Number
+        }
     },
     { timestamps: true }
 );

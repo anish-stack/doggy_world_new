@@ -21,8 +21,7 @@ const ConsultationDoctorSchema = new mongoose.Schema({
     discount: {
         type: Number,
         default: 0,
-        min: 0,
-        max: 100
+       
     },
     price: {
         type: Number,
@@ -39,10 +38,7 @@ const ConsultationDoctorSchema = new mongoose.Schema({
         required: true
 
     },
-    tags: {
-        type: [String],
-        default: []
-    },
+    tags: [String],
     availableTimeSlots: [
         {
             whichPart: {
