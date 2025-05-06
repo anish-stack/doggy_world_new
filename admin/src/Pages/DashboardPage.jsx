@@ -75,6 +75,9 @@ import AllBlogs from "@/screens/Blogs/AllBlogs"
 import CreateAndEditBlogs from "@/screens/Blogs/CreateAndEditBlogs"
 import AllGrooming from "@/screens/Grooming/AllGrooming"
 import AllGroomingPackage from "@/screens/Grooming/AllGroomingPackage"
+import AllConsultation from "@/screens/consultation/All_consultation"
+import AllConultationDoctor from "@/screens/consultation/AllConultationDoctor"
+import NotLoggedIn from "./NotLoggedIn"
 
 
 const DashboardPage = () => {
@@ -408,7 +411,7 @@ const DashboardPage = () => {
   }
 
   if (!user) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
+    return <NotLoggedIn/>
   }
 
   return (
@@ -578,6 +581,10 @@ const DashboardPage = () => {
             <Route path="/all-grooming-service" element={hasAccess("/dashboard/all-grooming-service") ? <AllGrooming /> : <AccessDenied />} />
             <Route path="/grooming-packages" element={hasAccess("/dashboard/grooming-packages") ? <AllGroomingPackage /> : <AccessDenied />} />
 
+
+            {/* Consultation */}
+            <Route path="/all-consultations" element={hasAccess("/dashboard/all-consultations") ? <AllConsultation /> : <AccessDenied />} />
+            <Route path="/consultations-doctors" element={hasAccess("/dashboard/consultations-doctors") ? <AllConultationDoctor /> : <AccessDenied />} />
 
 
             {/* Redirect unknown paths to dashboard home */}

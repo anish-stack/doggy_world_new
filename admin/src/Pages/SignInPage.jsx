@@ -19,19 +19,25 @@ const SignInPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, clearError } = useContext(AuthContext);
+  const { login, clearError ,error} = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    try {
-      const cred = {email, password}
-    await login(cred);
 
-      toast.success("Signed in successfully!");
-      navigate("/dashboard");
+    try {
+      const cred = { email, password }
+      await login(cred);
+if(error){
+  toast.error(error);
+
+}else{
+
+  toast.success("Signed in successfully!");
+  navigate("/dashboard");
+  clearError()
+}
     } catch (error) {
       toast.error(error.message || "Failed to sign in. Please try again.");
     } finally {
@@ -45,9 +51,9 @@ const SignInPage = () => {
         <Card className="border-red-100 shadow-lg">
           <CardHeader className="space-y-1">
             <div className="flex items-center justify-center mb-4">
-              <img 
-                src="https://doggyworld.in/assets/images/dogy-world-logo-b.webp" 
-                alt="Doggy World Logo" 
+              <img
+                src="https://doggyworld.in/assets/images/dogy-world-logo-b.webp"
+                alt="Doggy World Logo"
                 className="h-20 w-auto"
               />
             </div>
@@ -56,7 +62,7 @@ const SignInPage = () => {
               Enter your email and password to access your pet's paradise
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
@@ -72,7 +78,7 @@ const SignInPage = () => {
                     className="border-red-200 focus:border-red-400 focus:ring-red-400"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
@@ -89,17 +95,17 @@ const SignInPage = () => {
                     className="border-red-200 focus:border-red-400 focus:ring-red-400"
                   />
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full bg-red-600 hover:bg-red-700 text-white" 
+
+                <Button
+                  type="submit"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
             </form>
-            
+
             <div className="mt-6 text-center text-sm">
               <span>Don't have an account? </span>
               <Link to="/signup" className="text-red-600 hover:underline font-medium">

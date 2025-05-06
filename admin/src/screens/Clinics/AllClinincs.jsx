@@ -1,5 +1,5 @@
 import { API_URL, fetcher } from '@/constant/Urls'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useContext } from 'react'
 import useSWR from 'swr'
 import {
     Table,
@@ -46,6 +46,7 @@ import { Search, Plus, Edit, Trash2, Eye, MoreHorizontal } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import AuthContext from '@/context/authContext'
 
 const AllClinics = () => {
     const router = useNavigate()
@@ -56,6 +57,7 @@ const AllClinics = () => {
     const [selectedClinic, setSelectedClinic] = useState(null)
     const [filteredData, setFilteredData] = useState([])
     const [paginatedData, setPaginatedData] = useState([])
+    const {token} = useContext(AuthContext)
 
     // Fetch clinic data
     const { data, error, mutate } = useSWR(
@@ -105,7 +107,11 @@ const AllClinics = () => {
         if (!selectedClinic) return;
 
         try {
-            const response = await axios.delete(`${API_URL}/clinic/delete/${selectedClinic._id}`);
+            const response = await axios.delete(`${API_URL}/clinic/delete/${selectedClinic._id}`,{
+                headers:{
+                    Authorization:`Bearer ${token}`
+                }
+            });
 
             if (response.status === 200) {
                 mutate();
@@ -116,7 +122,7 @@ const AllClinics = () => {
             }
         } catch (error) {
             console.error('Error deleting clinic:', error);
-            alert('An error occurred while deleting the clinic');
+            alert(error.response.data.message || "Please try Again later");
         }
     };
 

@@ -13,6 +13,7 @@ const { uploadMultipleFiles, deleteMultipleFilesCloud } = require("../../utils/u
 exports.clinicRegister = async (req, res) => {
     const redis = req.app.get('redis');
     const files = req.files || [];
+    let publicIds = []
     let Images = [];
     try {
         const {
@@ -416,7 +417,8 @@ exports.updateClinic = async (req, res) => {
 // Delete clinic
 exports.deleteClinic = async (req, res) => {
     try {
-        // Find clinic by ID
+        const user = req.user
+
         const clinic = await ClinicRegister.findById(req.params.id);
         if (!clinic) {
             return res.status(404).json({
@@ -426,7 +428,7 @@ exports.deleteClinic = async (req, res) => {
         }
 
 
-        if (req.user.id !== clinic._id.toString() && req.user.role !== "admin") {
+        if (req.user.id && req.user.role !== "admin") {
             return res.status(403).json({
                 success: false,
                 message: "You don't have permission to delete this clinic"
@@ -657,14 +659,14 @@ exports.logoutAllDevices = async (req, res, next) => {
 exports.clinicUser = async (req, res, next) => {
     try {
         const userId = req.user.id;
-     
+
 
         const clinic = await ClinicRegister.findById(userId);
 
         if (!clinic) {
             return next(new ErrorResponse('Clinic not found', 404));
         }
-     
+
 
         res.status(200).json({
             success: true,

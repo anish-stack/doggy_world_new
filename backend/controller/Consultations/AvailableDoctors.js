@@ -10,7 +10,7 @@ exports.createDoctorConsultation = async (req, res) => {
     try {
         const file = req.file;
         const { name, discount, price, status, position, availableTimeSlots, tags } = req.body;
-       
+        console.log(req.body)
         // Validate required fields
         if (!name || !price || !position) {
             if (file) await deleteFile(file.path);
@@ -19,7 +19,7 @@ exports.createDoctorConsultation = async (req, res) => {
                 message: "Please provide name, price, and position"
             });
         }
-    
+
         // Check if position is already taken
         if (position) {
             const checkAvailablePosition = await ConsultationDoctors.findOne({ position });
@@ -222,7 +222,7 @@ exports.updateDoctorConsultation = async (req, res) => {
             tags,
             removeImage
         } = req.body;
-
+        console.log(req.body)
         // Find consultation
         const doctorConsultation = await ConsultationDoctors.findById(id);
 
@@ -267,7 +267,7 @@ exports.updateDoctorConsultation = async (req, res) => {
         }
 
         // Parse tags if provided as string
-        let parsedTags = doctorConsultation.tags;
+        let parsedTags = doctorConsultation.tags || [];
         if (tags) {
             try {
                 parsedTags = typeof tags === 'string'
@@ -280,6 +280,8 @@ exports.updateDoctorConsultation = async (req, res) => {
                     message: "Invalid tags format"
                 });
             }
+        } else {
+            parsedTags = []
         }
 
         // Update data object

@@ -1,6 +1,6 @@
 const ClinicRegister = require("../models/ClinicRegister/ClinicRegister");
+const AppError = require("../utils/ApiError");
 const { verifyToken } = require("../utils/sendToken");
-const errorHandler = require("./errorHandler");
 
 exports.isAuthenticated = async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ exports.isAuthenticated = async (req, res, next) => {
 
     // Check if token exists
     if (!token) {
-      return next(new errorHandler('You are not logged in. Please login to access this resource', 401));
+      return next(new AppError('You are not logged in. Please login to access this resource', 401));
     }
 
     // Verify token
@@ -27,7 +27,7 @@ exports.isAuthenticated = async (req, res, next) => {
     const user = await ClinicRegister.findById(decoded.id);
     
     if (!user) {
-      return next(new errorHandler('User no longer exists', 401));
+      return next(new AppError('User no longer exists', 401));
     }
     
     // Set user in request
@@ -35,7 +35,7 @@ exports.isAuthenticated = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    return next(new errorHandler('Authentication failed. Please log in again', 401));
+    return next(new AppError('Authentication failed. Please log in again', 401));
   }
 };
 
@@ -43,7 +43,7 @@ exports.isAuthenticated = async (req, res, next) => {
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return next(new errorHandler(`Role (${req.user.role}) is not allowed to access this resource`, 403));
+      return next(new AppError(`Role (${req.user.role}) is not allowed to access this resource`, 403));
     }
     next();
   };

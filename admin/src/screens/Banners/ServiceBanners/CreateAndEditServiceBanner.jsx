@@ -37,6 +37,7 @@ import { API_URL } from "@/constant/Urls";
 
 const SERVICE_TYPES = [
   { value: "consultation", label: "Consultation" },
+  { value: "grooming", label: "Grooming" },
   { value: "medical", label: "Medical Services" },
   { value: "wellness", label: "Wellness Programs" },
   { value: "therapy", label: "Therapy Sessions" },

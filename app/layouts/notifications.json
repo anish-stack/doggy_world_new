@@ -1,0 +1,52 @@
+{
+    "notifications": [
+      {
+        "id": 1,
+        "type": "appointment",
+        "image": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=800&auto=format&fit=crop&q=60",
+        "message": "Your appointment with Dr. Sarah Wilson has been confirmed for tomorrow at 10:00 AM",
+        "timestamp": "2024-03-20 10:00 AM",
+        "isRead": false
+      },
+      {
+        "id": 2,
+        "type": "prescription",
+        "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=60",
+        "message": "New prescription for Amoxicillin has been sent to your preferred pharmacy",
+        "timestamp": "2024-03-19 3:45 PM",
+        "isRead": true
+      },
+      {
+        "id": 3,
+        "type": "results",
+        "image": "https://images.unsplash.com/photo-1581093458791-4b41b374bd90?w=800&auto=format&fit=crop&q=60",
+        "message": "Your blood test results are now available. Everything looks normal!",
+        "timestamp": "2024-03-18 1:20 PM",
+        "isRead": true
+      },
+      {
+        "id": 4,
+        "type": "reminder",
+        "image": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800&auto=format&fit=crop&q=60",
+        "message": "Reminder: Take your evening medication at 8:00 PM",
+        "timestamp": "2024-03-18 7:30 PM",
+        "isRead": false
+      },
+      {
+        "id": 5,
+        "type": "appointment",
+        "image": "https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=800&auto=format&fit=crop&q=60",
+        "message": "Upcoming vaccination appointment next week. Don't forget to bring your health card!",
+        "timestamp": "2024-03-17 2:15 PM",
+        "isRead": true
+      },
+      {
+        "id": 6,
+        "type": "general",
+        "image": "https://images.unsplash.com/photo-1638202993928-7d113ed8e09b?w=800&auto=format&fit=crop&q=60",
+        "message": "New health tips available in your wellness section. Check them out!",
+        "timestamp": "2024-03-16 11:00 AM",
+        "isRead": true
+      }
+    ]
+  }

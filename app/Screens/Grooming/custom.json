@@ -1,0 +1,191 @@
+[
+  {
+    "id": "1",
+    "title": "Bath",
+    "type": "Bath",
+    "SubItems": [
+      {
+        "SubId": "10",
+        "SubTitle": "Bath Combo ",
+        "price": "₹ 500 - ₹ 1,000",
+        "including": ["ABCD(Shampoo)", "Ear Cleaning", "Nail Cut", "Anal Gland"]
+      },
+      {
+        "SubId": "20",
+        "SubTitle": "Antitick Bath Combo ",
+        "price": "₹ 500 - ₹ 1,100",
+        "including": ["ABCD(Shampoo)", "Ear Cleaning", "Nail Cut", "Anal Gland"]
+      },
+      {
+        "SubId": "30",
+        "SubTitle": "Medicated Bath Combo ",
+        "price": "₹ 600 - ₹ 1,200",
+        "including": ["ABCD(Shampoo)", "Ear Cleaning", "Nail Cut", "Anal Gland"]
+      },
+      {
+        "SubId": "40",
+        "SubTitle": "Anti tick + Medicated Bath Combo ",
+        "price": "₹ 750 - ₹ 1,300",
+        "including": ["ABCD(Shampoo)", "Ear Cleaning", "Nail Cut", "Anal Gland"]
+      },
+      {
+        "SubId": "50",
+        "SubTitle": "Special Bath Combo ",
+        "price": "₹ 800 - ₹ 1,400",
+        "including": [
+          "ABCD(Shampoo)",
+          "Ear Cleaning",
+          "Nail Cut",
+          "Anal Gland",
+          "Conditioner",
+          "Serum",
+          "Dental Paste",
+          "Paw Butter",
+          "Paw Cleaning"
+        ]
+      },
+      {
+        "SubId": "60",
+        "SubTitle": "Special Antitick Bath Combo ",
+        "price": "₹ 800 - ₹ 1,500",
+        "including": [
+          "ABCD(Shampoo)",
+          "Ear Cleaning",
+          "Nail Cut",
+          "Anal Gland",
+          "Conditioner",
+          "Serum",
+          "Dental Paste",
+          "Paw Butter",
+          "Paw Cleaning"
+        ]
+      },
+      {
+        "SubId": "70",
+        "SubTitle": "Special Medicated Bath Combo ",
+        "price": "₹ 800 - ₹ 1,600",
+        "including": [
+          "ABCD(Shampoo)",
+          "Ear Cleaning",
+          "Nail Cut",
+          "Anal Gland",
+          "Conditioner",
+          "Serum",
+          "Dental Paste",
+          "Paw Butter",
+          "Paw Cleaning"
+        ]
+      },
+      {
+        "SubId": "80",
+        "SubTitle": "Dry Bath Combo ",
+        "price": "₹ 500 - ₹ 1,000",
+        "including": ["ABCD(Shampoo)", "Ear Cleaning", "Nail Cut", "Anal Gland"]
+      },
+      {
+        "SubId": "90",
+        "SubTitle": "Only Bath",
+        "price": "₹ 500"
+      },
+      {
+        "SubId": "100",
+        "SubTitle": "Only Antitick Bath",
+        "price": "₹ 500 - ₹ 1,000"
+      },
+      {
+        "SubId": "110",
+        "SubTitle": "Only Medicated Bath",
+        "price": "₹ 600 - ₹ 1,100"
+      },
+      {
+        "SubId": "120",
+        "SubTitle": "Only Antitick + Medicated Bath",
+        "price": "₹ 750 - ₹ 1,300"
+      },
+      {
+        "SubId": "130",
+        "SubTitle": "Only Special Bath",
+        "price": "₹ 700 - ₹ 1,300"
+      },
+      {
+        "SubId": "140",
+        "SubTitle": "Only Special Antitick Bath",
+        "price": "₹ 700 - ₹ 1,400"
+      },
+      {
+        "SubId": "150",
+        "SubTitle": "Only Special Medicated Bath",
+        "price": "₹ 700 - ₹ 1,500"
+      },
+      {
+        "SubId": "160",
+        "SubTitle": "Only Dry Bath",
+        "price": "₹ 500 - ₹ 1,000"
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "Haircut",
+    "type": "Bath",
+    "SubItems": [
+      {
+        "id": "170",
+        "SubTitle": "Trimming",
+        "price": "₹ 550 - ₹ 1,000"
+      },
+      {
+        "id": "180",
+        "SubTitle": "Shave Off",
+        "price": "₹ 550 - ₹ 1,000"
+      },
+      {
+        "id": "190",
+        "SubTitle": "Hygiene Cutting",
+        "price": "₹ 200 - ₹ 300"
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "title": "Other",
+    "type": "Other",
+    "SubItems": [
+      {
+        "id": "5",
+        "SubTitle": "Nail Cut",
+        "price": "₹ 200"
+      },
+      {
+        "id": "15",
+        "SubTitle": "Ear Cleaning",
+        "price": "₹ 200"
+      },
+      {
+        "id": "25",
+        "SubTitle": "Anal Gland",
+        "price": "₹ 200"
+      },
+      {
+        "id": "35",
+        "SubTitle": "Conditioner",
+        "price": "₹ 100 - 300"
+      },
+      {
+        "id": "45",
+        "SubTitle": "Paw Cleaning",
+        "price": "₹ 100"
+      },
+      {
+        "id": "55",
+        "SubTitle": "Paw Butter",
+        "price": "₹ 100"
+      },
+      {
+        "id": "65",
+        "SubTitle": "Oil Massage",
+        "price": "₹ 200"
+      }
+    ]
+  }
+]

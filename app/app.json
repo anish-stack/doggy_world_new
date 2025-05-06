@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Doggy World Care",
+    "slug": "DoggyWorldCare",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/adaptive-icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "imageWidth": 500,
+      "backgroundColor": "#fff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.hbsdevelopersteam.DoggyWorldCare"
+    },
+    "web": {
+      "favicon": "./assets/adaptive-icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4a1d2e02-5441-4a59-91cc-bd8d2c464804"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

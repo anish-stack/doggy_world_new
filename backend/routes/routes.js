@@ -194,7 +194,7 @@ router.post('/clinic/verify-otp', verifyOTP);
 router.get('/clinic/get-all-clinic', getAllClinics);
 router.get('/clinic/get-clinic/:id', getClinicById);
 router.post('/clinic/update/:id', upload.array("images"), updateClinic);
-router.delete('/clinic/delete/:id', deleteClinic);
+router.delete('/clinic/delete/:id',isAuthenticated, deleteClinic);
 router.post('/clinic/login', clinicLogin);
 router.get('/dashboard-user', isAuthenticated, clinicUser);
 

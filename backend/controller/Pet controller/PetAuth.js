@@ -622,7 +622,7 @@ exports.verifyNumberChangeOtp = async (req, res) => {
         }
 
         // Update pet with new number
-        pet.petOwnertNumber =  pet._newPetOwnerNumber;
+        pet.petOwnertNumber = pet._newPetOwnerNumber;
         pet.is_verify_pet = true;
         pet.otp = null;
         pet._newPetOwnerNumber = undefined;
@@ -660,7 +660,7 @@ exports.getAllPets = async (req, res) => {
                 { petname: { $regex: search, $options: 'i' } },
                 { petOwnertNumber: { $regex: search, $options: 'i' } },
                 { petbreed: { $regex: search, $options: 'i' } },
-             
+
             ];
         }
 
@@ -670,10 +670,10 @@ exports.getAllPets = async (req, res) => {
         if (is_verify_pet !== null && is_verify_pet !== '') {
             queryOptions.is_verify_pet = is_verify_pet === 'true';
         } else {
-         
+
             queryOptions.is_verify_pet = true;
         }
-        
+
 
         const totalPets = await PetRegister.countDocuments(queryOptions);
 
