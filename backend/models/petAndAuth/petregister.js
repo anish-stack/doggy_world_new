@@ -46,9 +46,9 @@ const petRegisterSchema = new mongoose.Schema({
         type: Date,
         required: false
     },
-    _newPetOwnerNumber:{
+    _newPetOwnerNumber: {
         type: String,
-       
+
         unique: true,
         trim: true
     },
@@ -56,6 +56,7 @@ const petRegisterSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     }
+  
 }, { timestamps: true });
 
 const PetRegister = mongoose.model('PetRegister', petRegisterSchema);

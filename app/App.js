@@ -1,11 +1,26 @@
-import { Image, View, StyleSheet, Text } from "react-native";
+import { View, StyleSheet } from "react-native";
 import * as Sentry from "@sentry/react-native";
+import './context/firebaseConfig';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Provider, useSelector } from "react-redux";
+import { store } from "./redux/store";
+import Toast from "react-native-toast-message";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { AppRegistry } from "react-native";
+import { name as appName } from "./app.json";
+import * as SplashScreen from "expo-splash-screen";
+import LottieView from "lottie-react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import axios from "axios";
+import { API_END_POINT_URL_LOCAL } from "./constant/constant";
+
+// Import all screens
 import Home from "./Screens/Home/Home";
-import register from "./Screens/auth/register/register";
-import login from "./Screens/auth/login/login";
-import otp from "./Screens/auth/register/otp";
+import Register from "./Screens/auth/register/register";
+import Login from "./Screens/auth/login/login";
+import Otp from "./Screens/auth/register/otp";
 import ForgetPassword from "./Screens/auth/login/ForgetPassword";
 import SearchScreen from "./Screens/Search/SearchScreen";
 import Bakery from "./Screens/Services/Bakery/Bakery";
@@ -21,14 +36,6 @@ import CakesScreen from "./Screens/Services/Bakery/Categories/Cakes.Screen";
 import CakeDelivery from "./Screens/Services/Bakery/Categories/Cake.Type";
 import Dynamicscreen from "./Screens/Services/Bakery/Dynamic_Screen/Dynamic_screen";
 import ProductDetails from "./Screens/Services/Bakery/Dynamic_Screen/ProductDetails";
-import { Provider, useDispatch, useSelector } from "react-redux";
-import { store } from "./redux/store";
-import Toast from "react-native-toast-message";
-import { useEffect, useRef, useState } from "react";
-import { AppRegistry } from "react-native";
-import { name as appName } from "./app.json";
-import * as SplashScreen from "expo-splash-screen";
-
 import Cart from "./Screens/Cart/Cart";
 import Offers from "./Screens/Cart/Offers";
 import PetShop from "./Screens/Pet_Shop/PetShop";
@@ -41,18 +48,16 @@ import TestPage from "./Screens/Labs/TestPage";
 import Book_Test from "./Screens/Labs/Book_Test";
 import Single_Test from "./Screens/Labs/Single_Test";
 import SuperficialNoter from "./Screens/SuperficialCart/SuperficialNoter";
-import LottieView from "lottie-react-native";
 import SuperficialCart from "./Screens/SuperficialCart/SuperficialCart";
-import Vaccinations from "./Screens/Vaccination/Vaccinations";
-import VaccineDetails from "./Screens/Vaccination/VaccineDetails";
-import Vaccination from "./Screens/Vaccination/Vaccination";
-import BookVaccination from "./Screens/Vaccination/BookVaccination";
+// import Vaccinations from "./Screens/Vaccination/Vaccinations";
+// import VaccineDetails from "./Screens/Vaccination/VaccineDetails";
+// import Vaccination from "./Screens/Vaccination/Vaccination";
+// import BookVaccination from "./Screens/Vaccination/BookVaccination";
 import Coming_soon from "./Screens/Coming_soon/Coming_soon";
 import Physiotherapy from "./Screens/Physiotherapy/Physiotherapy";
 import PhysiotherapyDetails from "./Screens/Physiotherapy/PhysiotherapyDetails";
 import New_Tests from "./Labs/New_Tests";
 import Booking_Test_Confirm from "./Screens/SuperficialCart/Booking_Test_Confirm";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import Address from "./Screens/Cart/Address";
 import SingleBlog from "./components/Blogs/SingleBlog";
 import Order_Confirmation from "./Screens/Services/Bakery/Categories/Order_Confirmation";
@@ -64,7 +69,6 @@ import Cakes_order from "./Profile_Screens/Cakes_order/Cakes_order";
 import Lab from "./Profile_Screens/Orders/lab/Lab";
 import Help_Support from "./Profile_Screens/Help_Support/Help_Support";
 import AppointmentDetails from "./Profile_Screens/Appointments/AppointmentDetails";
-import { StatusBar } from "expo-status-bar";
 import NotFoundScreen from "./NotFoundScreen";
 import ErrorBoundaryWrapper from "./ErrorBoundary";
 import NotificationScreen from "./layouts/NotificationScreen";
@@ -75,424 +79,270 @@ import ViewLabDetails from "./Profile_Screens/Orders/lab/ViewLabDetails";
 import PetShopOrders from "./Profile_Screens/Orders/petShopOrders/PetShopOrders";
 import ViewPetShopOrder from "./Profile_Screens/Orders/petShopOrders/ViewPetShopOrder";
 import { getUser } from "./hooks/getUserHook";
-const Stack = createNativeStackNavigator();
+import useNotificationPermission from "./hooks/notification";
+import VaccinedTypes from "./Screens/Vaccination/VaccinedTypes";
 
+// Prevent SplashScreen from hiding automatically
 SplashScreen.preventAutoHideAsync();
+
+// Initialize Sentry
 Sentry.init({
   dsn: "https://5b208c724079bf3e5789b51da0190912@o4508873810771970.ingest.us.sentry.io/4509020408643584",
-
   sendDefaultPii: true,
 });
 
+// Create stack navigator
+const Stack = createNativeStackNavigator();
 
+// Screen configurations to avoid redundancy
+const screenConfigs = {
+
+  noHeader: { headerShown: false },
+
+  withTitle: (title) => ({ headerShown: true, title }),
+};
+
+// Main App component
 const App = () => {
-  const { getUserFnc } = getUser()
-  const navigationContainerRef = useRef();
+  const { refreshUser } = getUser();
+  const navigationContainerRef = useRef(null);
   const [currentRoute, setCurrentRoute] = useState("");
-  const { labTests, labTestsCount } = useSelector((state) => state.labCart);
+  const { labTestsCount } = useSelector((state) => state.labCart);
   const [showGif, setShowGif] = useState(false);
+  const { isGranted, requestPermission, deviceId, fcmToken } = useNotificationPermission();
+
+  // Track route change
+  const handleNavigationStateChange = useCallback(() => {
+    if (navigationContainerRef.current) {
+      const route = navigationContainerRef.current.getCurrentRoute();
+      if (route) {
+        setCurrentRoute(route.name);
+        console.log("Navigated to route:", route.name);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const getCurrentRoute = () => {
-      if (navigationContainerRef.current) {
-        const route = navigationContainerRef.current.getCurrentRoute();
-        if (route) {
-          setCurrentRoute(route.name);
-          console.log("Current Route:", route.name);
-        }
-      }
-    };
-
-    getCurrentRoute();
-
     const unsubscribe = navigationContainerRef.current?.addListener(
       "state",
-      getCurrentRoute
+      handleNavigationStateChange
     );
+
+    // Initial call
+    handleNavigationStateChange();
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [handleNavigationStateChange]);
+
+  // Show GIF if labTestsCount > 0
   useEffect(() => {
     if (labTestsCount > 0) {
+      console.log("Lab tests added:", labTestsCount);
       setShowGif(true);
 
       const timer = setTimeout(() => {
         setShowGif(false);
+        console.log("GIF hidden after 3s");
       }, 3000);
 
       return () => clearTimeout(timer);
     }
   }, [labTestsCount]);
 
+  // Send FCM token to server
+  const sendTokenOfFcm = async (data) => {
+    console.log("Sending FCM token to server:", data);
+    try {
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/Fcm/register`, data);
+      console.log("FCM token sent successfully:", response.data);
+    } catch (error) {
+      console.log("❌ FCM registration error:", error?.response?.data || error.message);
+    }
+  }
+
+  // Handle notification permission
+  const handleRequestNotificationPermission = useCallback(async () => {
+    console.log("Requesting notification permission...");
+    try {
+      const granted = await requestPermission();
+      console.log("Notification permission granted:", granted);
+
+      if (granted && deviceId) {
+        const data = { fcmToken, deviceId };
+        sendTokenOfFcm(data);
+      } else {
+        console.log("Notification not granted or deviceId missing");
+      }
+    } catch (error) {
+      console.log("❌ Notification permission error:", error);
+    }
+  }, [requestPermission, deviceId, sendTokenOfFcm]);
+
+  // App initialization effect
   useEffect(() => {
     const loadApp = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      SplashScreen.hideAsync();
+      console.log("🔄 App initialization started...");
+      try {
+        await refreshUser();
+        console.log("✅ User refreshed");
+
+        await handleRequestNotificationPermission();
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await SplashScreen.hideAsync();
+        console.log("✅ Splash screen hidden, app ready");
+      } catch (error) {
+        console.log("❌ App initialization error:", error);
+        SplashScreen.hideAsync();
+      }
     };
-    getUserFnc()
+
     loadApp();
   }, []);
+
+  // Determine whether to show the notifier
+  const shouldShowNoter = useMemo(() => {
+    const result =
+      labTestsCount > 0 &&
+      currentRoute !== "labCart" &&
+      currentRoute !== "Booking_Test_Confirm";
+    console.log("shouldShowNoter:", result);
+    return result;
+  }, [labTestsCount, currentRoute]);
+
+  // Conditional overlay rendering
+  const renderOverlay = useMemo(() => {
+    if (!showGif || currentRoute === "labCart" || currentRoute === "Booking_Test_Confirm") {
+      return null;
+    }
+
+    console.log("🎉 Showing confetti overlay");
+    return (
+      <View style={styles.overlay}>
+        <LottieView
+          source={require("./confeti.json")}
+          autoPlay
+          loop={false}
+          style={styles.lottie}
+        />
+      </View>
+    );
+  }, [showGif, currentRoute]);
 
   return (
     <NavigationContainer ref={navigationContainerRef}>
       <SafeAreaProvider>
         <Stack.Navigator>
-          <Stack.Screen
-            name="Home"
-            component={Home}
-            options={{ headerShown: false }}
-          />
-          {/* <Stack.Screen name="Home" options={{ headerShown: false }} component={Home} /> */}
+          {/* Home Screen */}
+          <Stack.Screen name="Home" component={Home} options={screenConfigs.noHeader} />
+
           {/* Auth Screens */}
-          <Stack.Screen
-            name="register"
-            options={{ headerShown: false, title: "Register Your Pet" }}
-            component={register}
-          />
-          <Stack.Screen
-            name="login"
-            options={{ headerShown: false, title: "Welcome back" }}
-            component={login}
-          />
-          <Stack.Screen
-            name="otp"
-            options={{ headerShown: false }}
-            component={otp}
-          />
-          <Stack.Screen
-            name="forget-password"
-            options={{ headerShown: false }}
-            component={ForgetPassword}
-          />
+          <Stack.Screen name="register" component={Register} options={{ ...screenConfigs.noHeader, title: "Register Your Pet" }} />
+          <Stack.Screen name="login" component={Login} options={{ ...screenConfigs.noHeader, title: "Welcome back" }} />
+          <Stack.Screen name="otp" component={Otp} options={screenConfigs.noHeader} />
+          <Stack.Screen name="forget-password" component={ForgetPassword} options={screenConfigs.noHeader} />
 
           {/* Searching Screens */}
-          <Stack.Screen
-            name="search"
-            options={{ headerShown: false }}
-            component={SearchScreen}
-          />
+          <Stack.Screen name="search" component={SearchScreen} options={screenConfigs.noHeader} />
 
           {/* Service Screens */}
-          <Stack.Screen
-            name="Bakery"
-            options={{ headerShown: false, title: "Pet Bakery" }}
-            component={Bakery}
-          />
-          <Stack.Screen
-            name="Consultation"
-            options={{ headerShown: false, title: "Online Consultation" }}
-            component={Consultation}
-          />
-          <Stack.Screen
-            name="Notifications"
-            options={{ headerShown: false, title: "Online Consultation" }}
-            component={NotificationScreen}
-          />
-
-          <Stack.Screen
-            name="next-step"
-            options={{ headerShown: false }}
-            component={BookingConsultation}
-          />
-          <Stack.Screen
-            name="thankyou"
-            options={{ headerShown: false }}
-            component={ThankYouPage}
-          />
+          <Stack.Screen name="Bakery" component={Bakery} options={{ ...screenConfigs.noHeader, title: "Pet Bakery" }} />
+          <Stack.Screen name="Consultation" component={Consultation} options={{ ...screenConfigs.noHeader, title: "Online Consultation" }} />
+          <Stack.Screen name="Notifications" component={NotificationScreen} options={{ ...screenConfigs.noHeader, title: "Online Consultation" }} />
+          <Stack.Screen name="next-step" component={BookingConsultation} options={screenConfigs.noHeader} />
+          <Stack.Screen name="thankyou" component={ThankYouPage} options={screenConfigs.noHeader} />
 
           {/* Service Screens ===> Grooming */}
-          <Stack.Screen
-            name="Grooming"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={Grooming}
-          />
-          <Stack.Screen
-            name="Gromming_More_service"
-            options={{ headerShown: true, title: "View All Pacakages" }}
-            component={AllGroomingServices}
-          />
-          <Stack.Screen
-            name="Create_Custom_Service"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={CustomPackage}
-          />
-          {/* Book-Grooming */}
-          <Stack.Screen
-            name="Book-Grooming"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={BookingStep}
-          />
+          <Stack.Screen name="Grooming" component={Grooming} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="Gromming_More_service" component={AllGroomingServices} options={screenConfigs.withTitle("View All Pacakages")} />
+          <Stack.Screen name="Create_Custom_Service" component={CustomPackage} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="Book-Grooming" component={BookingStep} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
           {/* Profile Screens authenticated */}
-          <Stack.Screen
-            name="Profile"
-            options={{ headerShown: false, title: "Profile" }}
-            component={Profile}
-          />
-          <Stack.Screen
-            name="Appointments"
-            options={{ headerShown: false, title: "Appointments" }}
-            component={Appointments}
-          />
-          <Stack.Screen
-            name="AppointmentDetails"
-            options={{ headerShown: false, title: "Appointments" }}
-            component={AppointmentDetails}
-          />
-          <Stack.Screen
-            name="Groomings"
-            options={{ headerShown: false, title: "My Grooming Sessions" }}
-            component={Grooming_Sessions}
-          />
-          <Stack.Screen
-            name="cakeorder"
-            options={{ headerShown: false, title: "Cakes Order" }}
-            component={Cakes_order}
-          />
-          <Stack.Screen
-            name="physioBookings"
-            options={{ headerShown: false, title: "Cakes Order" }}
-            component={Physio}
-          />
-          <Stack.Screen
-            name="ViewPhysioDetails"
-            options={{ headerShown: false, title: "Cakes Order" }}
-            component={ViewPhysioDetails}
-          />
-          <Stack.Screen
-            name="SingleCakeOrder"
-            options={{ headerShown: false, title: "Cakes Order" }}
-            component={SingleCakeOrder}
-          />
-          <Stack.Screen
-            name="labVaccinations"
-            options={{ headerShown: false, title: "Lab And Vaccinations" }}
-            component={Lab}
-          />
-          <Stack.Screen
-            name="ViewLabDetails"
-            options={{ headerShown: false, title: "Lab And Vaccinations" }}
-            component={ViewLabDetails}
-          />
-          <Stack.Screen
-            name="Orders"
-            options={{ headerShown: false, title: "Lab And Vaccinations" }}
-            component={PetShopOrders}
-          />
-          <Stack.Screen
-            name="ViewPetShopOrder"
-            options={{ headerShown: false, title: "Lab And Vaccinations" }}
-            component={ViewPetShopOrder}
-          />
-          <Stack.Screen
-            name="Support"
-            options={{ headerShown: true, title: "Help & Support" }}
-            component={Help_Support}
-          />
+          <Stack.Screen name="Profile" component={Profile} options={{ ...screenConfigs.noHeader, title: "Profile" }} />
+          <Stack.Screen name="Appointments" component={Appointments} options={{ ...screenConfigs.noHeader, title: "Appointments" }} />
+          <Stack.Screen name="AppointmentDetails" component={AppointmentDetails} options={{ ...screenConfigs.noHeader, title: "Appointments" }} />
+          <Stack.Screen name="Groomings" component={Grooming_Sessions} options={{ ...screenConfigs.noHeader, title: "My Grooming Sessions" }} />
+          <Stack.Screen name="cakeorder" component={Cakes_order} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
+          <Stack.Screen name="physioBookings" component={Physio} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
+          <Stack.Screen name="ViewPhysioDetails" component={ViewPhysioDetails} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
+          <Stack.Screen name="SingleCakeOrder" component={SingleCakeOrder} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
+          <Stack.Screen name="labVaccinations" component={Lab} options={{ ...screenConfigs.noHeader, title: "Lab And Vaccinations" }} />
+          <Stack.Screen name="ViewLabDetails" component={ViewLabDetails} options={{ ...screenConfigs.noHeader, title: "Lab And Vaccinations" }} />
+          <Stack.Screen name="Orders" component={PetShopOrders} options={{ ...screenConfigs.noHeader, title: "Lab And Vaccinations" }} />
+          <Stack.Screen name="ViewPetShopOrder" component={ViewPetShopOrder} options={{ ...screenConfigs.noHeader, title: "Lab And Vaccinations" }} />
+          <Stack.Screen name="Support" component={Help_Support} options={screenConfigs.withTitle("Help & Support")} />
 
           {/* Pet Bakery Screens ===> Bakery */}
-          <Stack.Screen
-            name="Cake-Screen"
-            options={{ headerShown: false, title: "Dog Grong" }}
-            component={CakesScreen}
-          />
-          <Stack.Screen
-            name="Cake-Delivery"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={CakeDelivery}
-          />
-          <Stack.Screen
-            name="Order_Confirmation"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={Order_Confirmation}
-          />
+          <Stack.Screen name="Cake-Screen" component={CakesScreen} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="Cake-Delivery" component={CakeDelivery} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="Order_Confirmation" component={Order_Confirmation} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
           {/* dynamic_screen */}
-          <Stack.Screen
-            name="dynamic_screen"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={Dynamicscreen}
-          />
-          <Stack.Screen
-            name="product_details"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={ProductDetails}
-          />
+          <Stack.Screen name="dynamic_screen" component={Dynamicscreen} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="product_details" component={ProductDetails} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
           {/* cart screen */}
-          <Stack.Screen
-            name="cart"
-            options={{ headerShown: false, title: "Cart" }}
-            component={Cart}
-          />
-          <Stack.Screen
-            name="Order-confirm"
-            options={{ headerShown: false }}
-            component={Orderconfirm}
-          />
-          <Stack.Screen
-            name="Available_Offer"
-            options={{ headerShown: false, title: "AvailableOffer" }}
-            component={Offers}
-          />
-          <Stack.Screen
-            name="single-blog"
-            options={{ headerShown: false }}
-            component={SingleBlog}
-          />
+          <Stack.Screen name="cart" component={Cart} options={{ ...screenConfigs.noHeader, title: "Cart" }} />
+          <Stack.Screen name="Order-confirm" component={Orderconfirm} options={screenConfigs.noHeader} />
+          <Stack.Screen name="Available_Offer" component={Offers} options={{ ...screenConfigs.noHeader, title: "AvailableOffer" }} />
+          <Stack.Screen name="single-blog" component={SingleBlog} options={screenConfigs.noHeader} />
 
           {/* Pet Shop Screen */}
-          <Stack.Screen
-            name="Pet_Shop"
-            options={{ headerShown: true, title: "Pet Shop" }}
-            component={PetShop}
-          />
-          <Stack.Screen
-            name="Dynamic_Shop"
-            options={{ headerShown: false, title: "Pet Shop" }}
-            component={Dynamic_Shop}
-          />
-          <Stack.Screen
-            name="Dynamic_Products_Shop"
-            options={{ headerShown: false, title: "Pet Shop" }}
-            component={Dynmaic_Products_Shop}
-          />
-          <Stack.Screen
-            name="Dynamic_Details_Shop"
-            options={{ headerShown: false, title: "Pet Shop" }}
-            component={Dynamic_Details_Shop}
-          />
+          <Stack.Screen name="Pet_Shop" component={PetShop} options={screenConfigs.withTitle("Pet Shop")} />
+          <Stack.Screen name="Dynamic_Shop" component={Dynamic_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
+          <Stack.Screen name="Dynamic_Products_Shop" component={Dynmaic_Products_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
+          <Stack.Screen name="Dynamic_Details_Shop" component={Dynamic_Details_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
 
           {/* select_address_and_order */}
-          <Stack.Screen
-            name="select_address_and_order"
-            options={{ headerShown: false }}
-            component={Address}
-          />
+          <Stack.Screen name="select_address_and_order" component={Address} options={screenConfigs.noHeader} />
 
           {/* Lab Test Screen */}
-          <Stack.Screen
-            name="Lab_Test"
-            options={{ headerShown: false }}
-            component={Lab_Test}
-          />
-          <Stack.Screen
-            name="lab_Clinic"
-            options={{ headerShown: false }}
-            component={Lab_Clinic}
-          />
-          <Stack.Screen
-            name="TestPage"
-            options={{ headerShown: false }}
-            component={TestPage}
-          />
-          <Stack.Screen
-            name="next-step_booking_lab"
-            options={{ headerShown: false }}
-            component={Book_Test}
-          />
-          <Stack.Screen
-            name="TestSelection"
-            options={{ headerShown: false }}
-            component={Single_Test}
-          />
-          <Stack.Screen
-            name="labCart"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={SuperficialCart}
-          />
-          <Stack.Screen
-            name="Booking_Test_Confirm"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={Booking_Test_Confirm}
-          />
-          {/* New Lab Test Screens */}
+          <Stack.Screen name="Lab_Test" component={Lab_Test} options={screenConfigs.noHeader} />
+          <Stack.Screen name="lab_Clinic" component={Lab_Clinic} options={screenConfigs.noHeader} />
+          <Stack.Screen name="TestPage" component={TestPage} options={screenConfigs.noHeader} />
+          <Stack.Screen name="next-step_booking_lab" component={Book_Test} options={screenConfigs.noHeader} />
+          <Stack.Screen name="TestSelection" component={Single_Test} options={screenConfigs.noHeader} />
+          <Stack.Screen name="labCart" component={SuperficialCart} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="Booking_Test_Confirm" component={Booking_Test_Confirm} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
-          <Stack.Screen
-            name="Lab"
-            options={{ headerShown: false, title: "Lab Test" }}
-            component={New_Tests}
-          />
+          {/* New Lab Test Screens */}
+          <Stack.Screen name="Lab" component={New_Tests} options={{ ...screenConfigs.noHeader }} />
 
           {/* vaccination */}
-          <Stack.Screen
-            name="vaccination_home"
-            options={{ headerShown: true, title: "Vaccination" }}
-            component={Vaccination}
-          />
-          <Stack.Screen
-            name="vaccination_booked"
-            options={{ headerShown: true, title: "Booking Successful 😃" }}
-            component={BookVaccination}
-          />
-          <Stack.Screen
-            name="vaccination"
-            options={{ headerShown: false, title: "Vaccination Best For Pet" }}
-            component={Vaccinations}
-          />
-          <Stack.Screen
-            name="VaccineDetails"
-            options={{ headerShown: false, title: "Vaccination Details" }}
-            component={VaccineDetails}
-          />
+          <Stack.Screen name="vaccination" component={VaccinedTypes}  options={{ ...screenConfigs.noHeader, title: "Lab Test" }}  />
+
+          {/* <Stack.Screen name="vaccination_home" component={Vaccination} options={screenConfigs.withTitle("Vaccination")} />
+          <Stack.Screen name="vaccination_booked" component={BookVaccination} options={screenConfigs.withTitle("Booking Successful 😃")} />
+          <Stack.Screen name="vaccination" component={Vaccinations} options={{ ...screenConfigs.noHeader, title: "Vaccination Best For Pet" }} />
+          <Stack.Screen name="VaccineDetails" component={VaccineDetails} options={{ ...screenConfigs.noHeader, title: "Vaccination Details" }} /> */}
 
           {/* Coming-Soon Screen */}
-          <Stack.Screen
-            name="Coming_soon"
-            options={{ headerShown: false, title: "Coming  Soon" }}
-            component={Coming_soon}
-          />
+          <Stack.Screen name="Coming_soon" component={Coming_soon} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
 
           {/* Physiotherapy */}
-          <Stack.Screen
-            name="Physiotherapy"
-            options={{ headerShown: true, title: "Physiotherapy" }}
-            component={Physiotherapy}
-          />
-          <Stack.Screen
-            name="PhysiotherapyDetails"
-            options={{ headerShown: true, title: "Details About Therapy" }}
-            component={PhysiotherapyDetails}
-          />
-          <Stack.Screen
-            name="*"
-            options={{ headerShown: true, title: "Details About Therapy" }}
-            component={NotFoundScreen}
-          />
+          <Stack.Screen name="Physiotherapy" component={Physiotherapy} options={screenConfigs.withTitle("Physiotherapy")} />
+          <Stack.Screen name="PhysiotherapyDetails" component={PhysiotherapyDetails} options={screenConfigs.withTitle("Details About Therapy")} />
+          <Stack.Screen name="*" component={NotFoundScreen} options={screenConfigs.withTitle("Details About Therapy")} />
 
           {/* Clinic Screen */}
-          <Stack.Screen
-            name="clinic"
-            options={{ headerShown: false, title: "Dog Grooming" }}
-            component={Clinic}
-          />
+          <Stack.Screen name="clinic" component={Clinic} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
         </Stack.Navigator>
       </SafeAreaProvider>
 
-      {currentRoute === "labCart" ||
-        currentRoute === "Booking_Test_Confirm" ? null : (
-        <>
-          {showGif && (
-            <View style={styles.overlay}>
-              <LottieView
-                source={require("./confeti.json")}
-                autoPlay
-                loop={false}
-                style={styles.lottie}
-              />
-            </View>
-          )}
+      {/* Conditionally render overlay */}
+      {renderOverlay}
 
-          {/* {labTestsCount > 0 ? <SuperficialNoter /> : null} */}
-        </>
-      )}
+      {/* Conditionally render SuperficialNoter */}
+      {shouldShowNoter && <SuperficialNoter />}
 
       <Toast />
     </NavigationContainer>
   );
 };
+
 const styles = StyleSheet.create({
   overlay: {
     position: "absolute",
@@ -510,14 +360,14 @@ const styles = StyleSheet.create({
   },
   text: {
     marginBottom: 12,
-
     color: "#fff",
     fontSize: 25,
-    color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
   },
 });
+
+// Root App component wrapped with store provider
 const RootApp = () => (
   <Provider store={store}>
     <SafeAreaProvider>
@@ -527,14 +377,14 @@ const RootApp = () => (
         translucent={false}
       />
       <ErrorBoundaryWrapper>
-
         <App />
       </ErrorBoundaryWrapper>
     </SafeAreaProvider>
-
   </Provider>
 );
-const wrappedWithSentry = Sentry.wrap(RootApp);
-AppRegistry.registerComponent(appName, () => wrappedWithSentry);
 
-export default Sentry.wrap(wrappedWithSentry);
+// Wrap with Sentry
+const SentryWrappedApp = Sentry.wrap(RootApp);
+AppRegistry.registerComponent(appName, () => SentryWrappedApp);
+
+export default SentryWrappedApp;

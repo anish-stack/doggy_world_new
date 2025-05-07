@@ -1,19 +1,17 @@
 const PetRegister = require("../../models/petAndAuth/petregister");
 const sendOtp = require("../../utils/whatsapp/Sendotp");
 const generateOtp = require("../../utils/otp");
-const sendToken = require("../../utils/sendToken");
+const {sendToken} = require("../../utils/sendToken");
 
 
 exports.registerPet = async (req, res) => {
     try {
-        const {
-            petType,
-            petname,
-            petOwnertNumber,
-            petdob,
-            petbreed,
-            isGivePermisoonToSendNotification,
-        } = req.body;
+        const petType = req.body.petType;
+        const petname = req.body.petname || req.body.petName;
+        const petOwnertNumber = req.body.petOwnertNumber || req.body.contactNumber;
+        const petdob = req.body.petdob || req.body.petDob || null;
+        const petbreed = req.body.petbreed || req.body.petBreed || "";
+        const isGivePermisoonToSendNotification = req.body.isGivePermissionToSendNotification ?? false;
 
         // Check if required fields are provided
         if (!petType || !petname || !petOwnertNumber) {
@@ -92,6 +90,7 @@ exports.registerPet = async (req, res) => {
 
 
     } catch (error) {
+        console.log(error.message,)
         return res.status(500).json({
             success: false,
             message: "Registration failed. Please try again.",
@@ -102,6 +101,7 @@ exports.registerPet = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
     try {
+        console.log(req.body)
         const { petOwnertNumber, otp } = req.body;
 
         if (!petOwnertNumber || !otp) {
@@ -112,6 +112,7 @@ exports.verifyOtp = async (req, res) => {
         }
 
         const pet = await PetRegister.findOne({ petOwnertNumber });
+        console.log(pet)
         if (!pet) {
             return res.status(404).json({
                 success: false,
@@ -144,7 +145,7 @@ exports.verifyOtp = async (req, res) => {
         }
 
         // Verify OTP
-        if (pet.otp !== parseInt(otp)) {
+        if (pet.otp !==otp) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP. Please try again.",
@@ -380,16 +381,11 @@ exports.loginPetverifyOtp = async (req, res) => {
 
 exports.getPetProfile = async (req, res) => {
     try {
-        const { petId } = req.params;
+        const user = req.user?.id
+        console.log(user)
+       
 
-        if (!petId) {
-            return res.status(400).json({
-                success: false,
-                message: "Pet ID is required",
-            });
-        }
-
-        const pet = await PetRegister.findById(petId).populate("petType");
+        const pet = await PetRegister.findById(user).populate("petType");
         if (!pet) {
             return res.status(404).json({
                 success: false,

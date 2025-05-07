@@ -21,18 +21,20 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hbsdevelopersteam.DoggyWorldCare"
+      "package": "com.hbsdevelopersteam.DoggyWorldCare",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/adaptive-icon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "4a1d2e02-5441-4a59-91cc-bd8d2c464804"
+        "projectId": "d74c8b24-6408-4b00-93f8-c0fbe295216b"
       }
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-firebase/app"
     ]
   }
 }

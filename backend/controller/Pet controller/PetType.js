@@ -3,6 +3,7 @@ const Pet = require("../../models/petAndAuth/petSchema");
 
 exports.createPetType = async (req, res) => {
     try {
+        const redis = req.app.get('redis');
         const { petType, status } = req.body;
 
         if (!petType) {
@@ -22,6 +23,13 @@ exports.createPetType = async (req, res) => {
 
         const newPet = new Pet({ petType, status });
         await newPet.save();
+        const keys = await redis.keys('petTypes:*');
+        if (keys.length > 0) {
+            await redis.del(keys);
+            console.log(`Cleared ${keys.length} Home Banner cache keys.`);
+        } else {
+            console.log('No Home Banner cache keys to clear.');
+        }
 
         return res.status(201).json({
             success: true,
@@ -40,11 +48,24 @@ exports.createPetType = async (req, res) => {
 exports.getAllPetTypes = async (req, res) => {
     try {
         const { search = '' } = req.query;
-        console.log(search)  // Default search to empty string if not provided
+        const redis = req.app.get('redis');
 
-        // Query the database, filter based on the search term if provided
+        const cacheKey = `petTypes:all:${search}`;
+        const cachedData = await redis.get(cacheKey);
+
+        // Return from cache if available
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                message: "Pet types retrieved from cache",
+                data: JSON.parse(cachedData),
+                fromCache: true
+            });
+        }
+
+        // Fetch from DB if cache not found
         const petTypes = await Pet.find({
-            petType: { $regex: search, $options: 'i' }  // Case-insensitive search
+            petType: { $regex: search, $options: 'i' }
         });
 
         if (!petTypes || petTypes.length === 0) {
@@ -54,11 +75,16 @@ exports.getAllPetTypes = async (req, res) => {
             });
         }
 
+        // Set cache for future requests
+        await redis.set(cacheKey, JSON.stringify(petTypes), 'EX', 3600); // Expires in 1 hour
+
         return res.status(200).json({
             success: true,
             message: 'Pet types fetched successfully.',
-            data: petTypes
+            data: petTypes,
+            fromCache: false
         });
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -96,6 +122,14 @@ exports.updatePetType = async (req, res) => {
         pet.status = status;
 
         await pet.save();
+        const redis = req.app.get('redis');
+        const keys = await redis.keys('petTypes:*');
+        if (keys.length > 0) {
+            await redis.del(keys);
+            console.log(`Cleared ${keys.length} Home Banner cache keys.`);
+        } else {
+            console.log('No Home Banner cache keys to clear.');
+        }
 
         return res.status(200).json({
             success: true,
@@ -123,6 +157,14 @@ exports.deletePetType = async (req, res) => {
         }
 
         await pet.deleteOne();
+        const redis = req.app.get('redis');
+        const keys = await redis.keys('petTypes:*');
+        if (keys.length > 0) {
+            await redis.del(keys);
+            console.log(`Cleared ${keys.length} Home Banner cache keys.`);
+        } else {
+            console.log('No Home Banner cache keys to clear.');
+        }
 
         return res.status(200).json({
             success: true,

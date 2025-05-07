@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
-import { API_END_POINT_URL } from '../../../constant/constant';
+import { API_END_POINT_URL, API_END_POINT_URL_LOCAL } from '../../../constant/constant';
 import { useToken } from '../../../hooks/useToken';
 
 const { width } = Dimensions.get('window');
@@ -24,7 +24,7 @@ const OTP_LENGTH = 6;
 
 export default function OtpVerification() {
     const [otp, setOtp] = useState('');
-    const [timer, setTimer] = useState(120);
+    const [timer, setTimer] = useState(1);
     const [loading, setLoading] = useState(false);
     const [otpInputs, setOtpInputs] = useState(Array(OTP_LENGTH).fill(''));
     const inputRefs = useRef([]);
@@ -85,11 +85,12 @@ export default function OtpVerification() {
     const handleResend = async () => {
         try {
             setLoading(true);
-            const response = await axios.post(`${API_END_POINT_URL}/api/resendOtp`, {
-                number: contact_number
+            const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/resend-otp`, {
+                petOwnertNumber: contact_number
             });
             console.log("response", response.data)
-            setTimer(120);
+            setTimer(1);
+            setOtp('')
             Alert.alert("Success", "A new OTP has been sent to your WhatsApp.");
         } catch (error) {
             Alert.alert("Error", error.response?.data?.error?.message || "Failed to resend OTP");
@@ -106,12 +107,12 @@ export default function OtpVerification() {
 
         try {
             setLoading(true);
-            const response = await axios.post(`${API_END_POINT_URL}/api/verifyOtp`, {
-                otp,
-                number: contact_number,
+            const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/verify-otp`, {
+                otp:Number(otp),
+                petOwnertNumber: contact_number,
             });
             console.log("response", response.data)
-            const { message, token } = response.data
+            const { message, token  } = response.data
             if (!token) {
                 Alert.alert("Login", "Please try to login again");
             }
@@ -121,7 +122,7 @@ export default function OtpVerification() {
 
             navigation.navigate('Home');
         } catch (error) {
-            Alert.alert("Error", error.response?.data?.error?.message || "Invalid OTP");
+            Alert.alert("Error", error.response?.data?.error || "Invalid OTP");
         } finally {
             setLoading(false);
         }
@@ -133,7 +134,7 @@ export default function OtpVerification() {
             style={styles.container}
         >
             <SafeAreaView style={styles.content}>
-                <Animated.View style={[styles.imageContainer, { transform: [{ scale: pulseAnim }] }]}>
+                <Animated.View style={[styles.imageContainer]}>
                     <Image
                         source={require('../../../assets/authimages/verify.png')}
                         style={styles.image}

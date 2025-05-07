@@ -11,6 +11,8 @@ const redisClient = require('./config/redis');
 const configSecurity = require('./config/security');
 const errorHandler = require('./middleware/errorHandler');
 const router = require('./routes/routes');
+const sendNotification = require('./utils/sendNotification');
+const { handleWebhook } = require('./controller/Consultations/BookingConsultaation');
 
 
 
@@ -18,7 +20,9 @@ dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const app = express();
-
+// (async () => {
+//   await sendNotification(); 
+// })();
 
 (async () => {
   try {
@@ -49,6 +53,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
+app.set('trust proxy', true);
 
 if (NODE_ENV === 'production') {
   app.use(morgan('combined', {
@@ -62,8 +67,9 @@ if (NODE_ENV === 'production') {
 }
 
 
-app.use(configSecurity.globalLimiter);
-app.use('/api/', configSecurity.apiLimiter);
+// app.use(configSecurity.globalLimiter);
+// app.use('/api/', configSecurity.apiLimiter);
+
 
 // Request parsing middleware
 app.use(express.json({ limit: '10kb' }));
@@ -77,6 +83,8 @@ if (NODE_ENV === 'production') {
 
 // Routes
 app.use('/api/v1',router)
+app.post('/razorpay-hook', express.raw({ type: 'application/json' }), handleWebhook);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

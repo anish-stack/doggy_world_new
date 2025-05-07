@@ -7,7 +7,8 @@ import { API_END_POINT_URL, API_END_POINT_URL_LOCAL } from '../../constant/const
 import { useToken } from '../../hooks/useToken';
 import { getUser } from '../../hooks/getUserHook';
 import { Ionicons } from '@expo/vector-icons';
-
+import Razorpay from 'react-native-razorpay';
+import useNotificationPermission from '../../hooks/notification';
 const { width } = Dimensions.get('window');
 
 const Toast = ({ message, type }) => (
@@ -34,7 +35,7 @@ export default function BookingConsultation() {
     const router = useRoute();
     const { type, id } = router.params || {};
     const navigation = useNavigation();
-    const { token, isLoggedIn } = useToken();
+    const { isLoggedIn } = useToken();
     const { user } = getUser();
     const [doctors, setDoctors] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ export default function BookingConsultation() {
     const [bookingInProgress, setBookingInProgress] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const scaleAnim = useRef(new Animated.Value(1)).current;
-
+    const { fcmToken } = useNotificationPermission()
     // Update current time every minute
     useEffect(() => {
         const intervalId = setInterval(() => {
@@ -102,7 +103,7 @@ export default function BookingConsultation() {
             }
         }
     }, [availableDates]);
-
+    console.log("done", fcmToken)
     const handleSelectDoctor = (doctor) => {
         setSelectedDoctor(doctor);
         setSelectedTime(null);
@@ -289,31 +290,132 @@ export default function BookingConsultation() {
         const data = {
             type: type,
             id: id,
-            user: user,
+            user: user?._id,
             doctorId: selectedDoctor._id,
             period: selectedPeriod,
             date: selectedDate.fullDate,
             time: selectedTime.label
         };
-   
 
         try {
+            setLoading(true)
             setBookingInProgress(true);
-            const response = await axios.post(`${API_END_POINT_URL}/api/create-consultation-booking`, data);
-            const { status } = response.data;
+            const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/booking-consultation-doctor`, data);
+            const { payment, booking } = response.data?.data;
 
-            if (status === 201) {
-                setSuccess('Appointment booked successfully!');
-                setTimeout(() => {
-                    navigation.navigate('thankyou');
-                }, 1500);
-            }
+            const options = {
+                description: 'Doctor Consultation',
+                image: 'https://i.ibb.co/cSHCKWHm/877c8e22-4df0-4f07-a857-e544208dc0f2.jpg',
+                currency: 'INR',
+                key: payment?.key,
+                amount: payment?.amount * 100,
+                name: 'Doggy World Care',
+                order_id: payment?.orderId,
+
+                prefill: {
+                    email: user?.email || '',
+                    contact: user?.phone || '',
+                    name: user?.name || ''
+                },
+                theme: { color: '#ff4d4d' }
+            };
+
+            Razorpay.open(options)
+                .then(async (paymentData) => {
+                    // Payment successful
+                    console.log('Payment Success:', paymentData);
+
+                    // Verify payment on backend
+                    try {
+                        const verifyResponse = await axios.post(
+                            `${API_END_POINT_URL_LOCAL}/api/v1/booking-verify-payment`,
+                            {
+                                razorpay_payment_id: paymentData.razorpay_payment_id,
+                                razorpay_order_id: paymentData.razorpay_order_id,
+                                razorpay_signature: paymentData.razorpay_signature,
+                                bookingId: booking._id,
+                                fcm: fcmToken
+                            }
+                        );
+
+                        if (verifyResponse.data.success) {
+                            // Payment verified successfully
+                            Alert.alert(
+                                'Booking Confirmed!',
+                                'Your appointment has been booked successfully.',
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => {
+                                            navigation.reset({
+                                                index: 0,
+                                                routes: [{ name: 'thankyou', params: { booking: booking } }],
+                                            });
+                                        },
+                                    },
+                                ]
+                            );
+
+                        } else {
+
+                            Alert.alert('Payment Verification Failed', 'Please contact support with your payment ID.');
+                        }
+                    } catch (verifyError) {
+                        console.error('Verification error:', verifyError);
+                        Alert.alert(
+                            'Verification Issue',
+                            'Your payment was processed, but we could not verify it. Please contact support.'
+                        );
+                    }
+                })
+                .catch((error) => {
+
+                    console.log('Payment Error:', error);
+
+
+                    checkPaymentStatus(booking._id);
+
+                    if (error.code === 'PAYMENT_CANCELLED') {
+                        Alert.alert('Booking Cancelled', 'You cancelled the payment process.');
+                    } else {
+                        Alert.alert('Payment Failed', 'Unable to process payment. Please try again.');
+                    }
+                });
+            setBookingInProgress(false);
+            setLoading(false)
         } catch (err) {
-            Alert.alert('Booking Issue', 'We’re experiencing high booking traffic. Please try again shortly.');
+            console.error('Booking creation error:', err.response?.data || err);
+            Alert.alert('Booking Issue', err.response?.data?.message || 'An unexpected error occurred.');
+
             setError('Failed to book appointment. Please try again.');
             setTimeout(() => setError(null), 3000);
         } finally {
             setBookingInProgress(false);
+            setLoading(false)
+        }
+    };
+
+    // Helper function to check payment status for edge cases
+    const checkPaymentStatus = async (bookingId) => {
+        try {
+            // Wait a few seconds to allow webhook processing
+            setTimeout(async () => {
+                const statusResponse = await axios.get(
+                    `${API_END_POINT_URL_LOCAL}/api/v1/booking-status/${bookingId}`
+                );
+
+                console.log('status-response', statusResponse.data)
+
+                if (statusResponse.data.status === 'Confirmed') {
+                    Alert.alert(
+                        'Booking Confirmed!',
+                        'Your appointment has been booked successfully.',
+                        [{ text: 'OK', onPress: () => navigation.navigate('BookingSuccess', { booking: statusResponse.data.booking }) }]
+                    );
+                }
+            }, 3000);
+        } catch (error) {
+            console.error('Status check error:', error);
         }
     };
 
@@ -344,7 +446,7 @@ export default function BookingConsultation() {
             <Header title="Book Consultation" navigation={navigation} />
 
             <ScrollView showsVerticalScrollIndicator={false}>
-          
+
                 {success && <Toast message={success} type="success" />}
 
                 <View style={styles.mainContent}>
@@ -458,7 +560,7 @@ export default function BookingConsultation() {
                                         </Text>
                                         {index === 0 && (
                                             <View style={styles.todayBadge}>
-                                               
+
                                             </View>
                                         )}
                                     </TouchableOpacity>
@@ -772,14 +874,14 @@ const styles = StyleSheet.create({
     },
     todayBadge: {
         position: 'absolute',
-        zIndex:999,
-        height:10,
-        width:10,
+        zIndex: 999,
+        height: 10,
+        width: 10,
         top: 1,
         right: 2,
         backgroundColor: '#4caf50',
         borderRadius: 50,
-      
+
     },
     todayText: {
         color: '#fff',

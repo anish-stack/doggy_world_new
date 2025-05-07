@@ -35,7 +35,7 @@ const Grooming = () => {
   useEffect(() => {
     fetchBanners(BANNER_TYPE);
   }, [fetchBanners]);
-  console.log(sliders)
+
   
   // Memoize the business hours section
   const BusinessHoursSection = useMemo(() => (

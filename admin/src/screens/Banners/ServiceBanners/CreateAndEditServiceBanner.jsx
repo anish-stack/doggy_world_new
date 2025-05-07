@@ -37,6 +37,7 @@ import { API_URL } from "@/constant/Urls";
 
 const SERVICE_TYPES = [
   { value: "consultation", label: "Consultation" },
+  { value: "vaccination", label: "Vaccination" },
   { value: "grooming", label: "Grooming" },
   { value: "medical", label: "Medical Services" },
   { value: "wellness", label: "Wellness Programs" },
@@ -94,7 +95,7 @@ export default function CreateAndEditServiceBanner() {
   // Set edit data
   const initializeEditData = (banner) => {
     setFormData({
-    
+
       position: banner.position || "",
       isActive: banner.isActive !== undefined ? banner.isActive : true,
     });
@@ -163,7 +164,7 @@ export default function CreateAndEditServiceBanner() {
       }));
     }
   }, [typeAlready, formData.type]);
-  
+
 
 
   // Handle image selection

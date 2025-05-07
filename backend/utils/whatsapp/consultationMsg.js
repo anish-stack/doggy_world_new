@@ -36,7 +36,7 @@ const sendConsultationComplete = async (mobileNumber, content) => {
             }
         };
 
-        console.log("consultation", options)
+      
         const response = await axios(options);
         console.log(`consultation message sent successfully:`, response.data);
         return response.data;

@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import {
@@ -17,369 +16,285 @@ import { useNavigation } from "@react-navigation/native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import axios from "axios"
 import { useToken } from "../../../hooks/useToken"
+import { API_END_POINT_URL_LOCAL } from "../../../constant/constant"
 import { getUser } from "../../../hooks/getUserHook"
 
-// API base URL - should be moved to environment config in production
-const API_BASE_URL = "https://admindoggy.adsdigitalmedia.com/api"
-
 export default function Login() {
-  // Navigation
   const navigation = useNavigation()
-  const { getUserFnc } = getUser()
+  const { refreshUser } = getUser()
+  const { saveToken } = useToken()
 
   // Form state
   const [contactNumber, setContactNumber] = useState("")
-  const [password, setPassword] = useState("")
   const [otp, setOtp] = useState("")
 
   // UI state
-  const [isOtpMode, setIsOtpMode] = useState(true)
   const [otpSent, setOtpSent] = useState(false)
-  //Token Save Hook
-  const { saveToken } = useToken()
-
-  // Status state
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
-
-  // Timer for OTP resend
+  const [message, setMessage] = useState({ type: "", text: "" })
   const [resendTimer, setResendTimer] = useState(0)
 
-  // Start resend timer when OTP is sent
+  // Handle resend timer
   useEffect(() => {
     let interval
     if (otpSent && resendTimer > 0) {
       interval = setInterval(() => {
-        setResendTimer((prevTimer) => prevTimer - 1)
+        setResendTimer(prev => prev - 1)
       }, 1000)
     }
-
     return () => clearInterval(interval)
   }, [otpSent, resendTimer])
 
-  // Reset states when switching between OTP and password modes
-  useEffect(() => {
-    setError("")
-    setSuccess("")
-    setOtp("")
-    setOtpSent(false)
-    setResendTimer(0)
-  }, [isOtpMode])
+  // Input validators
+  const isValidPhoneNumber = number => /^\d{10}$/.test(number)
+  const isValidOtp = code => /^\d{4,6}$/.test(code)
 
-  // Validate phone number format
-  const isValidPhoneNumber = (number) => {
-    return /^\d{10}$/.test(number)
-  }
-
-  // Handle phone number input with validation
-  const handleNumberChange = (text) => {
+  // Handle input changes
+  const handleNumberChange = text => {
     const cleanedText = text.replace(/[^0-9]/g, "")
     setContactNumber(cleanedText)
-
-    setError("")
-    setSuccess("")
+    setMessage({ type: "", text: "" })
   }
 
-  const handlePasswordLogin = async () => {
-    // Validate inputs
-    if (!contactNumber || !password) {
-      setError("Please enter both contact number and password")
+
+
+  // API calls
+  const requestOtp = async () => {
+    if (!contactNumber) {
+      setMessage({ type: "error", text: "Please enter your contact number" })
       return
     }
 
     if (!isValidPhoneNumber(contactNumber)) {
-      setError("Please enter a valid 10-digit phone number")
+      setMessage({ type: "error", text: "Please enter a valid 10-digit phone number" })
       return
     }
 
     try {
       setLoading(true)
-      setError("")
+      setMessage({ type: "", text: "" })
 
-      const response = await axios.post(`${API_BASE_URL}/user-login`, {
-        contact_number: contactNumber,
-        password: password,
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/login-pet`, {
+        petOwnertNumber: contactNumber,
       })
 
-      if (response.data && response.data.success) {
-        setSuccess("Login successful!")
+      if (response.data?.success) {
+        setOtpSent(true)
+        setMessage({ type: "success", text: "OTP sent successfully!" })
+        setResendTimer(30)
+      } else {
+        setMessage({
+          type: "error",
+          text: response.data?.message || "Failed to send OTP. Please try again."
+        })
+      }
+      setLoading(false)
+    } catch (error) {
+      setLoading(false)
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Unable to send OTP. Please check your connection."
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
+  const verifyOtp = async () => {
+    if (!contactNumber || !otp) {
+      setMessage({ type: "error", text: "Please enter both phone number and OTP" })
+      return
+    }
+
+    if (!isValidOtp(otp)) {
+      setMessage({ type: "error", text: "Please enter a valid OTP" })
+      return
+    }
+
+    try {
+      setLoading(true)
+      setMessage({ type: "", text: "" })
+
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/login-pet-verify-otp`, {
+        petOwnertNumber: contactNumber,
+        otp: Number(otp),
+      })
+
+      if (response.data?.success) {
+        const token = response.data.token
+
+        if (!token) {
+          setMessage({
+            type: "error",
+            text: "Verification successful, but no token received. Please contact support."
+          })
+          return
+        }
+
+        setMessage({ type: "success", text: "Login successful! Redirecting..." })
+        await saveToken(token)
+        await refreshUser()
 
         setTimeout(() => {
           navigation.navigate("Home")
-        }, 1000)
+        }, 1500)
       } else {
-        setError(response.data?.message || "Login failed. Please try again.")
+        setMessage({
+          type: "error",
+          text: response.data?.message || "Invalid OTP. Please try again."
+        })
       }
     } catch (error) {
-      console.error("Login error:", error)
-      setError(error.response?.data?.error?.message || "Unable to connect to server. Please check your internet connection.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRequestOtp = async () => {
-
-    if (!contactNumber) {
-      setError("Please enter your contact number")
-      return
-    }
-
-    if (!isValidPhoneNumber(contactNumber)) {
-      setError("Please enter a valid 10-digit phone number")
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError("")
-
-      const response = await axios.post(`${API_BASE_URL}/user-login-through-otp`, {
-        contact_number: contactNumber,
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Verification failed. Please try again."
       })
-
-      if (response.data && response.data.success) {
-        setOtpSent(true)
-        setSuccess("OTP sent successfully!")
-        setResendTimer(30) // 30 seconds cooldown for resend
-      } else {
-        setError(response.data?.message || "Failed to send OTP. Please try again.")
-      }
-    } catch (error) {
-      console.error("OTP request error:", error)
-      setError(error.response?.data?.error?.message || "Unable to send OTP. Please check your internet connection.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Verify OTP
-  const handleVerifyOtp = async () => {
-    // Validate inputs
-    if (!contactNumber || !otp) {
-      setError("Please enter both contact number and OTP");
-      return;
-    }
-
-    if (!isValidPhoneNumber(contactNumber)) {
-      setError("Please enter a valid 10-digit phone number");
-      return;
-    }
-
-    if (otp.length < 4) {
-      setError("Please enter a valid OTP");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await axios.post(`${API_BASE_URL}/user-login-verify-otp`, {
-        contact_number: contactNumber,
-        otp: otp,
-      });
-
-      if (response.data && response.data.success) {
-        const token = response.data.token;
-
-        if (!token) {
-          setError("Verification successful, but no token received. Please contact support.");
-          return;
-        }
-
-        setSuccess("OTP verified successfully!");
-        await saveToken(token);
-        await getUserFnc()
-        setTimeout(() => {
-          navigation.navigate("Home");
-        }, 2000);
-      } else {
-        setError(response.data?.message || "Invalid OTP. Please try again.");
-      }
-    } catch (error) {
-      console.error("OTP verification error:", error);
-      setError(
-        error.response?.data?.error?.message || "Unable to verify OTP. Please check your internet connection."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  // Resend OTP
-  const handleResendOtp = async () => {
-    if (resendTimer > 0) return
-
-    try {
-      setLoading(true)
-      setError("")
-
-      const response = await axios.post(`${API_BASE_URL}/user-login-resend-otp`, {
-        contact_number: contactNumber,
-      })
-
-      if (response.data && response.data.success) {
-        setSuccess("OTP resent successfully!")
-        setResendTimer(30) // 30 seconds cooldown for resend
-      } else {
-        setError(response.data?.message || "Failed to resend OTP. Please try again.")
-      }
-    } catch (error) {
-      console.error("OTP resend error:", error)
-      setError(error.response?.data?.error?.message || "Unable to resend OTP. Please check your internet connection.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Toggle between OTP and password login
-  const toggleLoginMode = () => {
-    setIsOtpMode(!isOtpMode)
+  const resetForm = () => {
+    setOtpSent(false)
+    setOtp("")
+    setMessage({ type: "", text: "" })
+    setResendTimer(0)
   }
 
   // Format seconds to MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  const formatTime = seconds => {
+    return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-        {/* Background Image */}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        {/* Background with overlay */}
         <Image
-          source={{ uri: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=2969&auto=format&fit=crop" }}
+          source={{
+            uri: "https://images.unsplash.com/photo-1560743641-3914f2c45636?q=80&w=2574&auto=format&fit=crop"
+          }}
           style={styles.backgroundImage}
         />
         <View style={styles.overlay} />
 
         <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back!</Text>
-            <Text style={styles.subtitle}>Your pets are waiting for you</Text>
+          {/* Logo placeholder */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Text style={styles.logoText}>🐾</Text>
+            </View>
           </View>
 
-          {/* Form Container */}
-          <View style={styles.formContainer}>
-            {/* Phone Number Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Contact Number</Text>
-              <TextInput
-                placeholder="Enter your 10-digit phone number"
-                value={contactNumber}
-                autoFocus={true}
-                onChangeText={handleNumberChange}
-                style={[styles.input, { borderColor: "#000", borderWidth: 0.2 }]}
-                keyboardType="phone-pad"
-                placeholderTextColor="#A0A0A0"
-                maxLength={10}
-                editable={!loading}
-              />
-            </View>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+          </View>
 
-            {/* Password or OTP Input */}
-            {!isOtpMode ? (
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
+          {/* Form */}
+          <View style={styles.formContainer}>
+            {/* Phone Number */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.inputWrapper}>
+                <Text style={styles.countryCode}>+91</Text>
                 <TextInput
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text)
-                    setError("")
-                  }}
-                  secureTextEntry
                   style={styles.input}
-                  placeholderTextColor="#A0A0A0"
+                  placeholder="Enter your number"
+                  value={contactNumber}
+                  onChangeText={handleNumberChange}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  placeholderTextColor="#9EA0A4"
                   editable={!loading}
                 />
               </View>
-            ) : (
+            </View>
+
+            {/* OTP Section */}
+            {otpSent && (
               <View style={styles.inputContainer}>
-                <View style={styles.otpHeader}>
-                  <Text style={styles.label}>OTP</Text>
-                  {otpSent && resendTimer > 0 && (
-                    <Text style={styles.timerText}>Resend in {formatTime(resendTimer)}</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>OTP Verification</Text>
+                  {resendTimer > 0 && (
+                    <Text style={styles.timer}>{formatTime(resendTimer)}</Text>
                   )}
                 </View>
                 <TextInput
-                  placeholder="Enter OTP"
+                  style={{ borderWidth: 1, padding: 10, color: 'black' }}
+                  placeholder="Enter 6-digit OTP"
                   value={otp}
+                  onChangeText={(text) => setOtp(text)}
                   keyboardType="number-pad"
-                  onChangeText={(text) => {
-                    setOtp(text.replace(/[^0-9]/g, ""))
-                    setError("")
-                  }}
-                  style={[styles.input, { backgroundColor: otpSent ? "#F5F5F5" : "#E8E8E8" }]}
-                  placeholderTextColor="#A0A0A0"
-                  editable={otpSent && !loading}
                   maxLength={6}
+                  placeholderTextColor="#000"
                 />
+
+
               </View>
             )}
 
-            {/* Error and Success Messages */}
-            {error ? (
-              <Text style={styles.errorMessage}>{error}</Text>
-            ) : success ? (
-              <Text style={styles.successMessage}>{success}</Text>
+            {/* Messages */}
+            {message.text ? (
+              <Text style={message.type === "error" ? styles.errorText : styles.successText}>
+                {message.text}
+              </Text>
             ) : null}
 
-            {/* Primary Action Button */}
+            {/* Primary Button */}
             <TouchableOpacity
-              style={[styles.loginButton, loading && styles.disabledButton]}
-              onPress={isOtpMode ? (otpSent ? handleVerifyOtp : handleRequestOtp) : handlePasswordLogin}
+              style={[styles.primaryButton, loading && styles.disabledButton]}
+              onPress={otpSent ? verifyOtp : requestOtp}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.loginButtonText}>
-                  {isOtpMode ? (otpSent ? "Verify OTP" : "Send OTP") : "Sign In"}
+                <Text style={styles.buttonText}>
+                  {otpSent ? "Verify & Login" : "Send OTP"}
                 </Text>
               )}
             </TouchableOpacity>
 
+            {/* Secondary Actions */}
+            {otpSent ? (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={resetForm}
+                  disabled={loading}
+                >
+                  <Text style={styles.secondaryButtonText}>Change Number</Text>
+                </TouchableOpacity>
 
-            {isOtpMode && otpSent && (
-              <TouchableOpacity
-                style={[styles.resendButton, (resendTimer > 0 || loading) && styles.disabledResendButton]}
-                onPress={handleResendOtp}
-                disabled={resendTimer > 0 || loading}
-              >
-                <Text style={[styles.resendText, (resendTimer > 0 || loading) && styles.disabledResendText]}>
-                  Resend OTP
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.toggleButton} onPress={toggleLoginMode} disabled={loading}>
-              <Text style={styles.toggleText}>{isOtpMode ? null : "Use OTP Instead"}</Text>
-            </TouchableOpacity>
-
-            {/* Forgot Password Link */}
-            {!isOtpMode && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate("forget-password")}
-                style={styles.forgotPassword}
-                disabled={loading}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            )}
+                <TouchableOpacity
+                  style={[styles.secondaryButton, resendTimer > 0 && styles.disabledSecondaryButton]}
+                  onPress={requestOtp}
+                  disabled={resendTimer > 0 || loading}
+                >
+                  <Text style={[
+                    styles.secondaryButtonText,
+                    resendTimer > 0 && styles.disabledSecondaryButtonText
+                  ]}>
+                    Resend OTP
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("register")} disabled={loading}>
-              <Text style={styles.signUpText}>Sign Up</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("register")}
+              disabled={loading}
+            >
+              <Text style={styles.signupText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -391,56 +306,77 @@ export default function Login() {
 const { width, height } = Dimensions.get("window")
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   backgroundImage: {
     position: "absolute",
     width,
     height,
-    top: 0,
-    left: 0,
+    resizeMode: "cover",
   },
   overlay: {
     position: "absolute",
     width,
     height,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   content: {
     flex: 1,
     justifyContent: "space-between",
     padding: 24,
   },
-  header: {
-    marginTop: height * 0.1,
+  logoContainer: {
     alignItems: "center",
+    marginTop: height * 0.07,
+  },
+  logo: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoText: {
+    fontSize: 40,
+  },
+  header: {
+    alignItems: "center",
+    marginTop: 16,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
+    color: "#FFFFFF",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: "#fff",
-    textAlign: "center",
+    color: "#FFFFFF",
     opacity: 0.8,
   },
   formContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
     padding: 24,
-    width: "100%",
-    marginVertical: 20,
+    marginTop: 32,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   inputContainer: {
     marginBottom: 20,
   },
-  otpHeader: {
+  labelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -448,97 +384,102 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: "#333",
+    color: "#1A1A1A",
     fontWeight: "600",
+    marginBottom: 8,
   },
-  timerText: {
-    fontSize: 12,
+  timer: {
+    fontSize: 14,
     color: "#FF6B6B",
     fontWeight: "500",
   },
-  input: {
-    backgroundColor: "#F5F5F5",
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#333",
+    backgroundColor: "#F9F9F9",
   },
-  errorMessage: {
+  countryCode: {
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: "#333333",
+    fontWeight: "500",
+    borderRightWidth: 1,
+    borderRightColor: "#E0E0E0",
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: "#333333",
+    backgroundColor: "#F9F9F9",
+    borderRadius: 12,
+  },
+  errorText: {
     color: "#E53935",
     fontSize: 14,
     marginBottom: 16,
     textAlign: "center",
   },
-  successMessage: {
+  successText: {
     color: "#43A047",
     fontSize: 14,
     marginBottom: 16,
     textAlign: "center",
   },
-  loginButton: {
+  primaryButton: {
     backgroundColor: "#FF6B6B",
     borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
     height: 56,
     justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
   },
   disabledButton: {
     backgroundColor: "#FFADAD",
   },
-  loginButtonText: {
-    color: "#fff",
+  buttonText: {
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
   },
-  resendButton: {
-    marginTop: 12,
-    alignItems: "center",
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
   },
-  disabledResendButton: {
+  secondaryButton: {
+    padding: 8,
+  },
+  disabledSecondaryButton: {
     opacity: 0.5,
   },
-  resendText: {
+  secondaryButtonText: {
     color: "#FF6B6B",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "500",
   },
-  disabledResendText: {
-    color: "#999",
-  },
-  toggleButton: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  toggleText: {
-    color: "#FF6B6B",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  forgotPassword: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  forgotPasswordText: {
-    color: "#666",
-    fontSize: 14,
+  disabledSecondaryButtonText: {
+    color: "#999999",
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 32,
   },
   footerText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
     marginRight: 8,
   },
-  signUpText: {
+  signupText: {
     color: "#FF6B6B",
     fontSize: 16,
     fontWeight: "600",
   },
-})
-
+});

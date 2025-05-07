@@ -26,6 +26,8 @@ const { CreateGroomingPackage, GetAllGroomingPackages, GetSingleGroomingPackage,
 const { createGroomingPackagejson, getAllGroomingPackagesjson, getGroomingPackageByIdjson, updateGroomingPackagejson, deleteGroomingPackagejson } = require('../controller/Grooming/GroomingPackagejson');
 const { createConsultation, updateConsultation, deleteConsultation, getAllConsultations, getSingleConsultation } = require('../controller/Consultations/Consultation');
 const { createDoctorConsultation, getAllDoctorConsultations, getSingleDoctorConsultation, updateDoctorConsultation, deleteDoctorConsultation } = require('../controller/Consultations/AvailableDoctors');
+const notificationController = require('../controller/FCM/NotificationToken');
+const { makeBookings, verifyPayment, getBookingStatus } = require('../controller/Consultations/BookingConsultaation');
 
 const router = express.Router();
 
@@ -43,12 +45,20 @@ router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
 router.post('/login-pet', loginPet);
 router.post('/login-pet-verify-otp', loginPetverifyOtp);
-router.get('/pet-profile/:petId', getPetProfile);
+router.get('/pet-profile', isAuthenticated, getPetProfile);
 router.put('/pet-profile/:petId', updatePetProfile);
 router.delete('/pet-profile/:petId', deletePetProfile);
 router.put('/change-owner-number/:petId', changePetOwnerNumber);
 router.post('/verify-number-change-otp/:petId', verifyNumberChangeOtp);
 router.get('/all-pets', getAllPets);
+
+
+router.post('/Fcm/register', notificationController.registerToken);
+router.get('/Fcm/', notificationController.getAllTokens);
+router.get('/Fcm/:id', notificationController.getTokenById);
+router.get('/Fcm/token/:fcmtoken', notificationController.findByToken);
+router.put('/Fcm/:id', notificationController.updateToken);
+router.delete('/Fcm/:id', notificationController.deleteToken);
 
 router.get('/', async (req, res) => {
     try {
@@ -266,6 +276,10 @@ router.get('/consultation-doctor', getAllDoctorConsultations);
 router.get('/consultation-doctor/:id', getSingleDoctorConsultation);
 
 
+// Booking for consulations
+router.post('/booking-consultation-doctor', makeBookings);
+router.post('/booking-verify-payment', verifyPayment);
+router.get('/booking-status/:bookingId', getBookingStatus);
 
 
 module.exports = router;

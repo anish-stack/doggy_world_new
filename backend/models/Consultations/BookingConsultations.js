@@ -11,10 +11,12 @@ const BookingConsultationSchema = new mongoose.Schema({
         ref: 'Consultation',
         required: true
     },
-    
     date: {
-        type: Date,
+        type: String,
         required: true
+    },
+    bookingRef: {
+        type: String,
     },
     time: {
         type: String,
@@ -44,23 +46,36 @@ const BookingConsultationSchema = new mongoose.Schema({
         enum: ['Online', 'In Store'],
         default: 'Online'
     },
-
     paymentDetails: {
-        razorpay_order_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment',
+        required: true
+    },
+    lastNotified: {
+        type: Date
+    },
+    prescription: {
+        description: {
             type: String,
             trim: true
         },
-        razorpay_payment_id: {
-            type: String,
-            trim: true
+        medicenSuggest: {
+            type: [String],
+            default: []
         },
-        payment_status: {
-            type: String,
-            enum: ['Pending', 'Paid', 'Failed'],
-            default: 'Pending'
+        nextDateForConsultation: {
+            type: Date
+        },
+        consultationDone: {
+            type: Boolean,
+            default: false
         }
+    },
+    doctorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ConsultationDoctor',
+        required: true
     }
-
 }, { timestamps: true });
 
 module.exports = mongoose.model('BookingConsultation', BookingConsultationSchema);

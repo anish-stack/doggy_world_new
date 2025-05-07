@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StyleSheet,
-  Image,
   KeyboardAvoidingView,
   ScrollView,
   Alert,
@@ -20,114 +19,127 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import { API_END_POINT_URL } from '../../../constant/constant';
+import { API_END_POINT_URL, API_END_POINT_URL_LOCAL } from '../../../constant/constant';
+import usePetType from '../../../hooks/usePetType';
+import useNotificationPermission from '../../../hooks/notification';
 
 const { width } = Dimensions.get('window');
 
 const THEME = {
-  primary: '#4A90E2',
-  secondary: '#5C6BC0',
-  accent: '#FF9800',
-  error: '#F44336',
+  primary: '#E53935', // Primary red
+  secondary: '#C62828', // Darker red
+  accent: '#FFCDD2', // Light red
+  error: '#B71C1C', // Deep red
   success: '#4CAF50',
-  background: '#F5F7FA',
+  background: '#FFF5F5', // Very light red tint
   surface: '#FFFFFF',
-  text: '#2C3E50',
-  border: '#E0E6ED'
+  text: '#37474F',
+  border: '#FFEBEE'
 };
+
+// SVG Background Pattern Component
+
+
 
 export default function Register() {
   const [formData, setFormData] = useState({
     petType: '',
-    name: '',
+    petName: '',
     contactNumber: '',
-    breed: '',
-    age: '',
-    password: '',
+    petDob: new Date(),
+    petBreed: '',
+
+    isGivePermissionToSendNotification: false,
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState({});
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, message: '', color: '#ccc' });
 
+  const { petTypes } = usePetType();
+  const { isGranted, requestPermission } = useNotificationPermission();
   const navigation = useNavigation();
 
-  // Password strength calculation using useMemo
-  const passwordStrength = useMemo(() => {
-    const { password } = formData;
-    let score = 0;
-    if (!password) return { score: 0, message: '', color: '#ccc' };
+  useEffect(() => {
 
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
+    setFormData(prev => ({
+      ...prev,
+      isGivePermissionToSendNotification: isGranted
+    }));
+  }, [isGranted]);
 
-    const strengthMap = {
-      0: { message: 'Very Weak', color: THEME.error },
-      1: { message: 'Weak', color: '#FFA726' },
-      2: { message: 'Medium', color: THEME.accent },
-      3: { message: 'Strong', color: '#66BB6A' },
-      4: { message: 'Very Strong', color: THEME.success }
-    };
 
-    return { score, ...strengthMap[score] };
-  }, [formData.password]);
 
-  // Form validation using useMemo
+  // Form validation
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.petType) newErrors.petType = 'Please select a pet type';
+    if (!formData.petName?.trim()) newErrors.petName = 'Pet name is required';
+
+    if (!formData.contactNumber?.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    } else if (!/^\d{10}$/.test(formData.contactNumber)) {
+      newErrors.contactNumber = 'Please enter a valid 10-digit phone number';
+    }
+
+    if (!formData.petBreed?.trim()) newErrors.petBreed = 'Pet breed is required';
+
+
+
+    if (formData.petDob > new Date()) {
+      newErrors.petDob = 'Birth date cannot be in the future';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const isFormValid = useMemo(() => {
-    const { name, contactNumber, breed, password, petType } = formData;
-    return (
-      name.length >= 2 &&
-      /^[0-9]{10}$/.test(contactNumber) &&
-      breed.length > 0 &&
-      password.length >= 6 &&
-      petType !== ''
-    );
+    return formData.petType &&
+      formData.petName?.trim() &&
+      formData.contactNumber?.trim() &&
+      formData.petBreed?.trim() 
+    
   }, [formData]);
 
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
     // Clear error for the field being updated
     setErrors(prev => ({ ...prev, [field]: '' }));
   }, []);
 
-  const validateForm = useCallback(() => {
-    const newErrors = {};
-    const { name, contactNumber, breed, password } = formData;
-
-    if (!name || name.length < 2) newErrors.name = 'Name must be at least 2 characters';
-    if (!/^[0-9]{10}$/.test(contactNumber)) newErrors.contactNumber = 'Enter valid 10-digit number';
-    if (!breed) newErrors.breed = 'Breed is required';
-    if (!password || password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  const handleRequestNotificationPermission = async () => {
+    const granted = await requestPermission();
+    setFormData(prev => ({
+      ...prev,
+      isGivePermissionToSendNotification: granted
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!validateForm() || loading) return;
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_END_POINT_URL}/api/register`, {
-        PetType: formData.petType,
-        petName: formData.name,
-        contact_number: formData.contactNumber,
-        Breed: formData.breed,
-        DOB: date.toISOString(),
-        Age: moment().diff(moment(date), 'years', true).toFixed(1),
-        password: formData.password
-      });
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/register-pet`, formData);
 
-      navigation.navigate('otp', {
-        data: response.data,
-        contact_number: formData.contactNumber
-      });
+      Alert.alert(
+        'Registration Successful!',
+        'Your furry friend has been registered successfully.',
+        [
+          {
+            text: 'Continue',
+            onPress: () => navigation.navigate('otp', {
+              data: response.data,
+              contact_number: formData.contactNumber
+            })
+          }
+        ]
+      );
     } catch (error) {
-        console.log(error)
+      console.log(error);
       Alert.alert(
         'Registration Failed',
         error.response?.data?.error?.message || 'Please try again later'
@@ -140,7 +152,7 @@ export default function Register() {
   const renderInputField = useCallback(({ icon, placeholder, field, keyboardType = 'default', secureTextEntry = false }) => (
     <>
       <View style={styles.inputContainer}>
-        <MaterialIcons name={icon} size={20} color={THEME.text} style={styles.inputIcon} />
+        <MaterialIcons name={icon} size={20} color={THEME.primary} style={styles.inputIcon} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -149,24 +161,31 @@ export default function Register() {
           keyboardType={keyboardType}
           secureTextEntry={secureTextEntry && !showPassword}
           editable={!loading}
+          placeholderTextColor="#9E9E9E"
         />
         {field === 'password' && (
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={24}
-              color={THEME.text}
+              color={THEME.primary}
             />
           </TouchableOpacity>
         )}
       </View>
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-
+      {errors[field] && (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={16} color={THEME.error} />
+          <Text style={styles.errorText}>{errors[field]}</Text>
+        </View>
+      )}
     </>
   ), [formData, errors, showPassword, loading]);
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Background Pattern */}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
@@ -175,36 +194,50 @@ export default function Register() {
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <MaterialIcons name="pets" size={40} color={THEME.primary} />
-            <Text style={styles.title}>Register Your Pet</Text>
-            <Text style={styles.subtitle}>Create an account for your furry friend</Text>
-          </View>
+          <LinearGradient
+            colors={[THEME.primary, THEME.secondary]}
+            style={styles.headerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.header}>
+              <MaterialIcons name="pets" size={48} color="#FFF" />
+              <Text style={styles.title}>Paw Registration</Text>
+              <Text style={styles.subtitle}>Create an account for your furry friend</Text>
+            </View>
+          </LinearGradient>
+
+          {errors.petType && (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error-outline" size={16} color={THEME.error} />
+              <Text style={styles.errorText}>{errors.petType}</Text>
+            </View>
+          )}
 
           <View style={styles.petTypeContainer}>
-            {['dog', 'cat'].map((type) => (
+            {petTypes.map((type) => (
               <TouchableOpacity
-                key={type}
+                key={type?.petType}
                 style={[
                   styles.petTypeButton,
-                  formData.petType === type && styles.selectedPetTypeButton,
+                  formData.petType === type?._id && styles.selectedPetTypeButton,
                   loading && styles.disabledButton
                 ]}
-                onPress={() => handleInputChange('petType', type)}
+                onPress={() => handleInputChange('petType', type?._id)}
                 disabled={loading}
               >
                 <FontAwesome5
-                  name={type}
+                  name={type?.petType.toLowerCase()}
                   size={24}
-                  color={formData.petType === type ? THEME.surface : THEME.text}
+                  color={formData.petType === type?._id ? THEME.surface : THEME.text}
                 />
                 <Text
                   style={[
                     styles.petTypeText,
-                    formData.petType === type && styles.selectedPetTypeText
+                    formData.petType === type?._id && styles.selectedPetTypeText
                   ]}
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {type?.petType.charAt(0).toUpperCase() + type?.petType.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -212,8 +245,8 @@ export default function Register() {
 
           {renderInputField({
             icon: 'pets',
-            placeholder: 'Pet Name',
-            field: 'name'
+            placeholder: ' Pet Name',
+            field: 'petName'
           })}
 
           {renderInputField({
@@ -223,56 +256,45 @@ export default function Register() {
             keyboardType: 'phone-pad'
           })}
 
-          <TouchableOpacity
-            style={[styles.datePickerButton, loading && styles.disabledButton]}
-            onPress={() => setShowDatePicker(true)}
-            disabled={loading}
-          >
-            <MaterialIcons name="calendar-today" size={20} color={THEME.text} />
-            <Text style={styles.datePickerText}>
-              {moment(date).format('MMMM D, YYYY')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.dateSection}>
+            <TouchableOpacity
+              style={[styles.datePickerButton, loading && styles.disabledButton, errors.petDob && styles.inputError]}
+              onPress={() => setShowDatePicker(true)}
+              disabled={loading}
+            >
+              <MaterialIcons name="calendar-today" size={20} color={THEME.primary} />
+              <Text style={styles.datePickerText}>
+                {moment(formData.petDob).format('MMMM D, YYYY')}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.dateLabel}>📅 Pet's Birthday</Text>
+
+            {errors.petDob && (
+              <View style={styles.errorContainer}>
+                <MaterialIcons name="error-outline" size={16} color={THEME.error} />
+                <Text style={styles.errorText}>{errors.petDob}</Text>
+              </View>
+            )}
+          </View>
 
           {showDatePicker && (
             <DateTimePicker
-              value={date}
+              value={formData.petDob}
               mode="date"
               display="default"
               maximumDate={new Date()}
               onChange={(event, selectedDate) => {
                 setShowDatePicker(false);
-                if (selectedDate) setDate(selectedDate);
+                if (selectedDate) handleInputChange('petDob', selectedDate);
               }}
             />
           )}
 
           {renderInputField({
             icon: 'pets',
-            placeholder: 'Breed',
-            field: 'breed'
+            placeholder: 'Pet Breed',
+            field: 'petBreed'
           })}
-
-          {renderInputField({
-            icon: 'lock',
-            placeholder: 'Password',
-            field: 'password',
-            secureTextEntry: true
-          })}
-
-          {formData.password && (
-            <View style={styles.passwordStrength}>
-              <View
-                style={[
-                  styles.strengthBar,
-                  { backgroundColor: passwordStrength.color }
-                ]}
-              />
-              <Text style={[styles.strengthText, { color: passwordStrength.color }]}>
-                {passwordStrength.message}
-              </Text>
-            </View>
-          )}
 
           <TouchableOpacity
             onPress={handleSubmit}
@@ -280,7 +302,7 @@ export default function Register() {
             style={{ width: '100%' }}
           >
             <LinearGradient
-              colors={[THEME.error, THEME.error]}
+              colors={[THEME.primary, THEME.secondary]}
               style={[
                 styles.button,
                 (!isFormValid || loading) && styles.disabledButton
@@ -291,7 +313,10 @@ export default function Register() {
               {loading ? (
                 <ActivityIndicator color={THEME.surface} />
               ) : (
-                <Text style={styles.buttonText}>Register Pet</Text>
+                <>
+                  <MaterialIcons name="pets" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.buttonText}>Register Pet</Text>
+                </>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -314,31 +339,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.background,
   },
+  backgroundPatternContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
   scrollContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 30,
   },
+  headerGradient: {
+    width: '100%',
+    borderRadius: 15,
+    marginTop: 20,
+    overflow: 'hidden',
+  },
   header: {
     alignItems: 'center',
-    marginVertical: 30,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: THEME.text,
+    color: '#FFF',
     marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#FFF',
     marginTop: 5,
+    opacity: 0.9,
   },
   petTypeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginBottom: 25,
+    marginVertical: 20,
   },
   petTypeButton: {
     flexDirection: 'row',
@@ -354,9 +400,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     gap: 10,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   selectedPetTypeButton: {
     backgroundColor: THEME.primary,
+    borderColor: THEME.secondary,
   },
   petTypeText: {
     fontSize: 16,
@@ -380,6 +429,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  inputError: {
+    borderColor: THEME.error,
+    borderWidth: 1,
   },
   inputIcon: {
     marginRight: 10,
@@ -389,6 +444,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: THEME.text,
   },
+  dateSection: {
+    width: '100%',
+    marginBottom: 15,
+  },
   datePickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -396,32 +455,69 @@ const styles = StyleSheet.create({
     height: 55,
     backgroundColor: THEME.surface,
     borderRadius: 12,
-    marginBottom: 15,
     paddingHorizontal: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   datePickerText: {
     marginLeft: 10,
     fontSize: 16,
     color: THEME.text,
   },
+  dateLabel: {
+    fontSize: 12,
+    color: THEME.primary,
+    marginTop: 5,
+    marginLeft: 5,
+  },
   passwordStrength: {
     width: '100%',
     marginBottom: 20,
+    backgroundColor: '#E0E0E0',
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
   },
   strengthBar: {
-    height: 4,
-    borderRadius: 2,
-    marginBottom: 5,
+    height: '100%',
+    borderRadius: 3,
   },
   strengthText: {
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
+    marginTop: 5,
+  },
+  notificationPermission: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: THEME.primary,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: THEME.primary,
+  },
+  notificationText: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.text,
   },
   button: {
     width: '100%',
@@ -430,6 +526,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+    flexDirection: 'row',
   },
   buttonText: {
     color: THEME.surface,
@@ -445,13 +542,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    marginTop: -10,
+    paddingHorizontal: 5,
+    alignSelf: 'flex-start',
+  },
   errorText: {
     color: THEME.error,
     fontSize: 12,
-    marginBottom: 15,
-    marginTop: -10,
-    alignSelf: 'flex-start',
-    marginLeft: 15,
+    marginLeft: 5,
   },
   disabledButton: {
     opacity: 0.6,

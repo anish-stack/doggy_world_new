@@ -2,27 +2,27 @@ const nodemailer = require("nodemailer");
 
 // Create transporter object
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        // secure: process.env.EMAIL_SECURE === "true", 
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
-    });
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    // secure: process.env.EMAIL_SECURE === "true", 
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 };
 
 exports.sendOtpEmail = async (email, otp, clinicName) => {
-    try {
-        const transporter = createTransporter();
+  try {
+    const transporter = createTransporter();
 
-        // Email options
-        const mailOptions = {
-            from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
-            to: email,
-            subject: "Email Verification OTP",
-            html: `
+    // Email options
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Email Verification OTP",
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #4a90e2; text-align: center;">Email Verification</h2>
           <p>Hello ${clinicName},</p>
@@ -37,32 +37,32 @@ exports.sendOtpEmail = async (email, otp, clinicName) => {
           </div>
         </div>
       `,
-        };
+    };
 
-        // Send email
-        const info = await transporter.sendMail(mailOptions);
-        console.log("OTP email sent:", info.messageId);
-        return info;
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log("OTP email sent:", info.messageId);
+    return info;
 
-    } catch (error) {
-        console.error("Error sending OTP email:", error);
-        throw new Error("Failed to send OTP email");
-    }
+  } catch (error) {
+    console.error("Error sending OTP email:", error);
+    throw new Error("Failed to send OTP email");
+  }
 };
 
 exports.sendPasswordResetEmail = async (email, resetToken, clinicName) => {
-    try {
-        const transporter = createTransporter();
+  try {
+    const transporter = createTransporter();
 
-        // Create reset URL
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // Create reset URL
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        // Email options
-        const mailOptions = {
-            from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
-            to: email,
-            subject: "Password Reset Request",
-            html: `
+    // Email options
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Password Reset Request",
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #4a90e2; text-align: center;">Password Reset Request</h2>
           <p>Hello ${clinicName},</p>
@@ -79,30 +79,30 @@ exports.sendPasswordResetEmail = async (email, resetToken, clinicName) => {
           </div>
         </div>
       `,
-        };
+    };
 
-        // Send email
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Password reset email sent:", info.messageId);
-        return info;
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent:", info.messageId);
+    return info;
 
-    } catch (error) {
-        console.error("Error sending password reset email:", error);
-        throw new Error("Failed to send password reset email");
-    }
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    throw new Error("Failed to send password reset email");
+  }
 };
 
 
 exports.sendWelcomeEmail = async (email, clinicName) => {
-    try {
-        const transporter = createTransporter();
+  try {
+    const transporter = createTransporter();
 
-        // Email options
-        const mailOptions = {
-            from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
-            to: email,
-            subject: "Welcome to Doggy World!",
-            html: `
+    // Email options
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Welcome to Doggy World!",
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h2 style="color: #4a90e2; text-align: center;">Welcome to Doggy World Veterinary Hospital!</h2>
           <p>Hello ${clinicName},</p>
@@ -122,15 +122,72 @@ exports.sendWelcomeEmail = async (email, clinicName) => {
           </div>
         </div>
       `,
-        };
+    };
 
-        // Send email
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Welcome email sent:", info.messageId);
-        return info;
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Welcome email sent:", info.messageId);
+    return info;
 
-    } catch (error) {
-        console.error("Error sending welcome email:", error);
-        throw new Error("Failed to send welcome email");
-    }
+  } catch (error) {
+    console.error("Error sending welcome email:", error);
+    throw new Error("Failed to send welcome email");
+  }
+};
+
+
+exports.sendCustomeConulationEmail = async ({ data }) => {
+  const {
+    consulationtype,
+    date,
+    petname,
+    bookingId,
+    Payment,
+    time,
+    whichDoctor,
+    whenBookingDone,
+    ownerNumber = 'Customer'
+  } = data;
+
+  try {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: "anishjha896@gmail.com", // Admin email
+      subject: `New Consultation Booking Received - ID: ${bookingId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2 style="color: #e74c3c;">New Booking Notification</h2>
+          <p>A new consultation booking has been successfully made on the Doggy World platform.</p>
+
+          <h3>📋 Booking Details:</h3>
+          <ul>
+            <li><strong>Booking ID:</strong> ${bookingId}</li>
+            <li><strong>Consultation Type:</strong> ${consulationtype}</li>
+            <li><strong>Pet Name:</strong> ${petname}</li>
+            <li><strong>Owner Number:</strong> ${ownerNumber}</li>
+            <li><strong>Doctor Assigned:</strong> ${whichDoctor}</li>
+            <li><strong>Date:</strong> ${date}</li>
+            <li><strong>Time:</strong> ${time}</li>
+            <li><strong>Payment Amount:</strong> ₹${Payment}</li>
+            <li><strong>Booking Timestamp:</strong> ${whenBookingDone}</li>
+          </ul>
+
+          <p>Please log in to the admin panel for more details or to take further action if required.</p>
+
+          <p style="margin-top: 20px;">Regards,<br/>
+          <strong>Doggy World System</strong></p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Admin booking email sent:", info.messageId);
+    return info;
+
+  } catch (error) {
+    console.error("❌ Error sending admin consultation email:", error);
+    throw new Error("Failed to send admin consultation email");
+  }
 };
