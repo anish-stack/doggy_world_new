@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
 
-const VaccinationBookingSchema = new mongoose.Schema({
+const LabTestBookingSchema = new mongoose.Schema({
 
-    vaccine: {
+    labTests: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Vaccination',
+        ref: 'LabProducts',
         required: true
-    },
+    }],
 
     clinic: {
         type: mongoose.Schema.Types.ObjectId,
@@ -25,7 +25,7 @@ const VaccinationBookingSchema = new mongoose.Schema({
         ref: 'PetRegister',
         required: true
     },
-    fcmToken:{
+    fcmToken: {
         type: String,
     },
     selectedDate: {
@@ -44,10 +44,6 @@ const VaccinationBookingSchema = new mongoose.Schema({
         default: 'Morning'
     },
 
-    nextScheduledVaccination: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Schedule'
-    },
 
     payment: {
         type: mongoose.Schema.Types.ObjectId,
@@ -87,4 +83,4 @@ const VaccinationBookingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-module.exports = mongoose.model('VaccinationBooking', VaccinationBookingSchema);
+module.exports = mongoose.model('LabTestBooking', LabTestBookingSchema);

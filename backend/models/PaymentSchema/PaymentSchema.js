@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const PaymentSchema = new mongoose.Schema({
-
+    forWhat:{
+        type: String,
+    },
     petid: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'PetRegister',

@@ -371,7 +371,7 @@ const EditVaccines = () => {
                             </div>
                         </div>
 
-                        {formData.is_package && (
+               
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="home_price_of_package">Home Price (₹)</Label>
@@ -395,7 +395,7 @@ const EditVaccines = () => {
                                     />
                                 </div>
                             </div>
-                        )}
+               
                     </CardContent>
                 </Card>
 

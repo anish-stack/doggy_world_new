@@ -152,35 +152,70 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
   try {
     const transporter = createTransporter();
 
-    const mailOptions = {
-      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
-      to: "anishjha896@gmail.com", // Admin email
-      subject: `New Consultation Booking Received - ID: ${bookingId}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-          <h2 style="color: #e74c3c;">New Booking Notification</h2>
-          <p>A new consultation booking has been successfully made on the Doggy World platform.</p>
-
-          <h3>📋 Booking Details:</h3>
-          <ul>
-            <li><strong>Booking ID:</strong> ${bookingId}</li>
-            <li><strong>Consultation Type:</strong> ${consulationtype}</li>
-            <li><strong>Pet Name:</strong> ${petname}</li>
-            <li><strong>Owner Number:</strong> ${ownerNumber}</li>
-            <li><strong>Doctor Assigned:</strong> ${whichDoctor}</li>
-            <li><strong>Date:</strong> ${date}</li>
-            <li><strong>Time:</strong> ${time}</li>
-            <li><strong>Payment Amount:</strong> ₹${Payment}</li>
-            <li><strong>Booking Timestamp:</strong> ${whenBookingDone}</li>
-          </ul>
-
-          <p>Please log in to the admin panel for more details or to take further action if required.</p>
-
-          <p style="margin-top: 20px;">Regards,<br/>
-          <strong>Doggy World System</strong></p>
-        </div>
-      `,
-    };
+    let mailOptions
+  
+    if(whichDoctor){
+      mailOptions = {
+        from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+        to: "anishjha896@gmail.com", // Admin email
+        subject: `New Consultation Booking Received - ID: ${bookingId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #e74c3c;">New Booking Notification</h2>
+            <p>A new consultation booking has been successfully made on the Doggy World platform.</p>
+  
+            <h3>📋 Booking Details:</h3>
+            <ul>
+              <li><strong>Booking ID:</strong> ${bookingId}</li>
+              <li><strong>Consultation Type:</strong> ${consulationtype}</li>
+              <li><strong>Pet Name:</strong> ${petname}</li>
+              <li><strong>Owner Number:</strong> ${ownerNumber}</li>
+              <li><strong>Doctor Assigned:</strong> ${whichDoctor}</li>
+              <li><strong>Date:</strong> ${date}</li>
+              <li><strong>Time:</strong> ${time}</li>
+              <li><strong>Payment Amount:</strong> ₹${Payment}</li>
+              <li><strong>Booking Timestamp:</strong> ${whenBookingDone}</li>
+            </ul>
+  
+            <p>Please log in to the admin panel for more details or to take further action if required.</p>
+  
+            <p style="margin-top: 20px;">Regards,<br/>
+            <strong>Doggy World System</strong></p>
+          </div>
+        `,
+      };
+    }else{
+      mailOptions = {
+        from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+        to: "anishjha896@gmail.com", // Admin email
+        subject: `New Vaccination Booking Received - ID: ${bookingId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #e74c3c;">New Booking Notification</h2>
+            <p>A new Vaccination booking has been successfully made on the Doggy World platform.</p>
+  
+            <h3>📋 Booking Details:</h3>
+            <ul>
+              <li><strong>Booking ID:</strong> ${bookingId}</li>
+              <li><strong>Vaccination:</strong> ${consulationtype}</li>
+              <li><strong>Pet Name:</strong> ${petname}</li>
+              <li><strong>Owner Number:</strong> ${ownerNumber}</li>
+              
+              <li><strong>Date:</strong> ${date}</li>
+              <li><strong>Time:</strong> ${time}</li>
+              <li><strong>Payment Amount:</strong> ₹${Payment}</li>
+              <li><strong>Booking Timestamp:</strong> ${whenBookingDone}</li>
+            </ul>
+  
+            <p>Please log in to the admin panel for more details or to take further action if required.</p>
+  
+            <p style="margin-top: 20px;">Regards,<br/>
+            <strong>Doggy World System</strong></p>
+          </div>
+        `,
+      };
+    }
+ 
 
     const info = await transporter.sendMail(mailOptions);
     console.log("📧 Admin booking email sent:", info.messageId);

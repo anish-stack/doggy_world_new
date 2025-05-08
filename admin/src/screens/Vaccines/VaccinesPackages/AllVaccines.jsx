@@ -247,20 +247,37 @@ const AllVaccines = () => {
                                                         </Card>
 
                                                         {/* Vaccinations Included */}
-                                                        <Card>
+                                                        <Card className={'w-full'}>
                                                             <CardContent className="pt-4">
                                                                 <h4 className="font-semibold mb-2">Vaccinations Included</h4>
                                                                 {vaccine.VaccinedInclueds && vaccine.VaccinedInclueds.length > 0 ? (
-                                                                    <ul className="list-disc pl-5">
-                                                                        {vaccine.VaccinedInclueds.map((item, idx) => (
-                                                                            <li key={idx}>{item}</li>
-                                                                        ))}
+                                                                    <ul className="list-decimal ">
+                                                                        {vaccine.VaccinedInclueds
+                                                                            .flatMap(item =>
+                                                                                item
+                                                                                    .split(',')
+                                                                                    .map(subItem => subItem.trim())
+                                                                                    .filter(subItem => subItem !== '')
+                                                                            )
+                                                                            .map((subItem, index) => (
+                                                                             <>
+                                                                              
+                                                                             <li
+                                                                                    key={index}
+                                                                                    className="truncate "
+                                                                                >
+                                                                                    {subItem}
+                                                                                </li>
+                                                                             </>
+                                                                            ))}
                                                                     </ul>
                                                                 ) : (
                                                                     <p className="text-sm text-gray-500">No vaccinations specified</p>
                                                                 )}
                                                             </CardContent>
                                                         </Card>
+
+
 
                                                         {/* Vaccination Types */}
                                                         <Card>

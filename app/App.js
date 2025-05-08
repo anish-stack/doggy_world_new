@@ -81,6 +81,9 @@ import ViewPetShopOrder from "./Profile_Screens/Orders/petShopOrders/ViewPetShop
 import { getUser } from "./hooks/getUserHook";
 import useNotificationPermission from "./hooks/notification";
 import VaccinedTypes from "./Screens/Vaccination/VaccinedTypes";
+import VaccinesShows from "./Screens/NewVaccines/VaccinesShows";
+import VaccineDetailsNew from "./Screens/NewVaccines/VaccineDetailsNew";
+import BookingVaccine from "./Screens/NewVaccines/forInstantBooking/BookingVaccine";
 
 // Prevent SplashScreen from hiding automatically
 SplashScreen.preventAutoHideAsync();
@@ -313,6 +316,9 @@ const App = () => {
 
           {/* vaccination */}
           <Stack.Screen name="vaccination" component={VaccinedTypes}  options={{ ...screenConfigs.noHeader, title: "Lab Test" }}  />
+          <Stack.Screen name="vaccines" component={VaccinesShows}  options={{ ...screenConfigs.noHeader, title: "vaccines" }}  />
+          <Stack.Screen name="VaccineDetail" component={VaccineDetailsNew}  options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }}  />
+          <Stack.Screen name="book-now-vaccine" component={BookingVaccine}  options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }}  />
 
           {/* <Stack.Screen name="vaccination_home" component={Vaccination} options={screenConfigs.withTitle("Vaccination")} />
           <Stack.Screen name="vaccination_booked" component={BookVaccination} options={screenConfigs.withTitle("Booking Successful 😃")} />

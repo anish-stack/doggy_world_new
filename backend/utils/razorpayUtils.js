@@ -35,10 +35,8 @@ class RazorpayUtils {
         throw new Error('Amount is required for creating payment');
       }
 
-      // Amount should be in paise (multiply by 100 if in rupees)
-      if (orderOptions.amount < 100 && !this.testMode) {
-        orderOptions.amount *= 100;
-      }
+   
+ 
 
       const order = await this.instance.orders.create(orderOptions);
       
@@ -48,6 +46,7 @@ class RazorpayUtils {
         key: this.instance.key_id,
       };
     } catch (error) {
+      console.log(error)
       return {
         success: false,
         error: error.message || 'Failed to create payment',

@@ -191,7 +191,7 @@ export const AuthProvider = ({ children }) => {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [loadUser]);
+  }, []);
 
   // Effect to refresh token before expiry
   useEffect(() => {

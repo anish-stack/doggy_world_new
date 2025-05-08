@@ -42,9 +42,11 @@ exports.createCoupon = async (req, res) => {
 };
 
 exports.getCoupons = async (req, res) => {
-
     try {
-        const coupons = await Coupon.find().sort({ createdAt: -1 });
+        const type = req.query.type;
+        const filter = type ? { category: type } : {};
+
+        const coupons = await Coupon.find(filter).sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -53,12 +55,11 @@ exports.getCoupons = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(501).json({
-            success: true,
+        return res.status(500).json({
+            success: false,
             source: "database",
-            error
+            message: error.message,
         });
-
     }
 };
 

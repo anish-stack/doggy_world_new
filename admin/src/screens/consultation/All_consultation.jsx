@@ -141,7 +141,7 @@ const AllConsultation = () => {
             isAnyOffer: service?.isAnyOffer,
             offer_valid_upto_text: service?.offer_valid_upto_text,
             active: service?.isAnyOffer,
-            position: consultation.length + 1,
+            position: service?.position || consultation.length + 1,
             imageFile: null,
             existingImageUrl: service.imageUrl?.url,
         })

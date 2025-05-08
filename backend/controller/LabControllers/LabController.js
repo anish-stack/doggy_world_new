@@ -1,9 +1,9 @@
-const Vaccination = require("../../models/VaccinationSchema/VaccinationSchema");
+const LabtestProduct = require("../../models/LabsTest/LabSchema");
 const { deleteMultipleFiles } = require("../../middleware/multer");
 const { uploadMultipleFiles, deleteMultipleFilesCloud } = require("../../utils/upload");
 
-// Create a new vaccine product
-exports.createVaccineProduct = async (req, res) => {
+// Create a new labtest product
+exports.createLabTestProduct = async (req, res) => {
     try {
         const redis = req.app.get('redis');
         const {
@@ -16,7 +16,7 @@ exports.createVaccineProduct = async (req, res) => {
             forage,
             is_dog,
             is_popular,
-            VaccinedInclueds,
+            LabTestdInclueds,
             is_cat,
             small_desc,
             desc,
@@ -83,7 +83,7 @@ exports.createVaccineProduct = async (req, res) => {
 
         // Check if at least one image is uploaded
         const images = req.files;
-       
+
         if (!images || images.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -121,8 +121,8 @@ exports.createVaccineProduct = async (req, res) => {
             url: imageUrls[0].url,
             public_id: imageUrls[0].public_id  // <-- fix here
         };
-        // Create new vaccine product with validated data
-        const newVaccineProduct = new Vaccination({
+        // Create new labtest product with validated data
+        const newLabTestProduct = new LabtestProduct({
             title,
             price: parseFloat(price),
             discount_price: discount_price ? parseFloat(discount_price) : undefined,
@@ -130,7 +130,7 @@ exports.createVaccineProduct = async (req, res) => {
             is_active: is_active === 'true' || is_active === true,
             tag,
             forage,
-            VaccinedInclueds,
+            LabTestdInclueds,
             is_dog: is_dog === 'true' || is_dog === true,
             is_popular: is_popular === 'true' || is_popular === true,
             is_cat: is_cat === 'true' || is_cat === true,
@@ -149,7 +149,7 @@ exports.createVaccineProduct = async (req, res) => {
         });
 
         // Validate using Mongoose schema validation
-        const validationError = newVaccineProduct.validateSync();
+        const validationError = newLabTestProduct.validateSync();
         if (validationError) {
             // Clean up uploaded images if validation fails
             if (publicIds.length > 0) {
@@ -164,20 +164,20 @@ exports.createVaccineProduct = async (req, res) => {
         }
 
         // Save the new product
-        await newVaccineProduct.save();
+        await newLabTestProduct.save();
 
         // Invalidate cache
         if (redis) {
-            await redis.del('vaccine-products:all');
+            await redis.del('labtest-products:all');
         }
 
         return res.status(201).json({
             success: true,
-            message: "Vaccine product created successfully",
-            data: newVaccineProduct
+            message: "LabTest product created successfully",
+            data: newLabTestProduct
         });
     } catch (error) {
-        console.error("Create Vaccine Product Error:", error);
+        console.error("Create LabTest Product Error:", error);
 
         // Clean up uploaded files if any error occurs
         try {
@@ -190,7 +190,7 @@ exports.createVaccineProduct = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Error creating vaccine product",
+            message: "Error creating labtest product",
             error: error.message
         });
     }
@@ -198,34 +198,34 @@ exports.createVaccineProduct = async (req, res) => {
 
 
 
-// Get all vaccine products with pagination
-exports.getAllVaccineProducts = async (req, res) => {
+// Get all labtest products with pagination
+exports.getAllLabTestProducts = async (req, res) => {
     try {
-      
+
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10; 
+        const limit = parseInt(req.query.limit) || 10;
 
 
         const skip = (page - 1) * limit;
 
-       
-        const totalVaccines = await Vaccination.countDocuments();
+
+        const totalLabTests = await LabtestProduct.countDocuments();
 
 
-        const vaccines = await Vaccination.find()
-            .skip(skip)  
-            .limit(limit) 
+        const labtests = await LabtestProduct.find()
+            .skip(skip)
+            .limit(limit)
             .populate('WhichTypeOfvaccinations', 'title');
 
-   
-        const totalPages = Math.ceil(totalVaccines / limit);
+
+        const totalPages = Math.ceil(totalLabTests / limit);
 
         return res.status(200).json({
             success: true,
-            message: "Vaccine products fetched successfully",
-            data: vaccines,
+            message: "LabTest products fetched successfully",
+            data: labtests,
             pagination: {
-                totalItems: totalVaccines,
+                totalItems: totalLabTests,
                 totalPages: totalPages,
                 currentPage: page,
                 itemsPerPage: limit,
@@ -235,72 +235,72 @@ exports.getAllVaccineProducts = async (req, res) => {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Error fetching vaccine products",
+            message: "Error fetching labtest products",
             error: error.message,
         });
     }
 };
 
 
-// Get a single vaccine product by ID
-exports.getSingleVaccineProduct = async (req, res) => {
+// Get a single labtest product by ID
+exports.getSingleLabTestProduct = async (req, res) => {
     try {
-        const vaccineProduct = await Vaccination.findById(req.params.id).populate('WhichTypeOfvaccinations');
-        if (!vaccineProduct) {
+        const labtestProduct = await LabtestProduct.findById(req.params.id).populate('WhichTypeOfvaccinations');
+        if (!labtestProduct) {
             return res.status(404).json({
                 success: false,
-                message: "Vaccine product not found"
+                message: "LabTest product not found"
             });
         }
         return res.status(200).json({
             success: true,
-            message: "Vaccine product fetched successfully",
-            data: vaccineProduct
+            message: "LabTest product fetched successfully",
+            data: labtestProduct
         });
     } catch (error) {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Error fetching vaccine product",
+            message: "Error fetching labtest product",
             error: error.message
         });
     }
 };
 
-exports.updateVaccineProduct = async (req, res) => {
+exports.updateLabTestProduct = async (req, res) => {
     try {
         const { id } = req.params;
 
         const {
             WhichTypeOfvaccinations,
-            VaccinedInclueds,
+            LabTestdInclueds,
             ...otherFields
         } = req.body;
 
         // Convert WhichTypeOfvaccinations to Array
-        let whichTypeOfVaccinationsArray = [];
+        let whichTypeOfLabtestProductsArray = [];
         if (WhichTypeOfvaccinations) {
             if (typeof WhichTypeOfvaccinations === 'string') {
-                whichTypeOfVaccinationsArray = WhichTypeOfvaccinations.split(',').map(id => id.trim());
+                whichTypeOfLabtestProductsArray = WhichTypeOfvaccinations.split(',').map(id => id.trim());
             } else if (Array.isArray(WhichTypeOfvaccinations)) {
-                whichTypeOfVaccinationsArray = WhichTypeOfvaccinations;
+                whichTypeOfLabtestProductsArray = WhichTypeOfvaccinations;
             }
         }
 
-        // Convert VaccinedInclueds to Array
-        let vaccinedIncluedsArray = [];
-        if (VaccinedInclueds) {
-            if (typeof VaccinedInclueds === 'string') {
-                vaccinedIncluedsArray = VaccinedInclueds.split(',').map(item => item.trim());
-            } else if (Array.isArray(VaccinedInclueds)) {
-                vaccinedIncluedsArray = VaccinedInclueds;
+        // Convert LabTestdInclueds to Array
+        let labtestdIncluedsArray = [];
+        if (LabTestdInclueds) {
+            if (typeof LabTestdInclueds === 'string') {
+                labtestdIncluedsArray = LabTestdInclueds.split(',').map(item => item.trim());
+            } else if (Array.isArray(LabTestdInclueds)) {
+                labtestdIncluedsArray = LabTestdInclueds;
             }
         }
 
         let updateData = {
             ...otherFields,
-            WhichTypeOfvaccinations: whichTypeOfVaccinationsArray,
-            VaccinedInclueds: vaccinedIncluedsArray,
+            WhichTypeOfvaccinations: whichTypeOfLabtestProductsArray,
+            LabTestdInclueds: labtestdIncluedsArray,
         };
 
         console.log(req.files)
@@ -322,42 +322,42 @@ exports.updateVaccineProduct = async (req, res) => {
             }));
         }
 
-        const updatedVaccine = await Vaccination.findByIdAndUpdate(id, updateData, {
+        const updatedLabTest = await LabtestProduct.findByIdAndUpdate(id, updateData, {
             new: true,
             runValidators: true,
         });
 
-        if (!updatedVaccine) {
+        if (!updatedLabTest) {
             return res.status(404).json({
                 success: false,
-                message: "Vaccine product not found",
+                message: "LabTest product not found",
             });
         }
 
         return res.status(200).json({
             success: true,
-            message: "Vaccine product updated successfully",
-            data: updatedVaccine,
+            message: "LabTest product updated successfully",
+            data: updatedLabTest,
         });
 
     } catch (error) {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Error updating vaccine product",
+            message: "Error updating labtest product",
             error: error.message,
         });
     }
 };
 
-// Delete a vaccine product by ID
-exports.deleteVaccineProduct = async (req, res) => {
+// Delete a labtest product by ID
+exports.deleteLabTestProduct = async (req, res) => {
     try {
-        const deletedProduct = await Vaccination.findByIdAndDelete(req.params.id);
+        const deletedProduct = await LabtestProduct.findByIdAndDelete(req.params.id);
         if (!deletedProduct) {
             return res.status(404).json({
                 success: false,
-                message: "Vaccine product not found"
+                message: "LabTest product not found"
             });
         }
 
@@ -366,17 +366,17 @@ exports.deleteVaccineProduct = async (req, res) => {
             await deleteMultipleFilesCloud(deletedProduct.image.map(img => img.public_id));
         }
 
-        await redis.del('vaccine-products:all');  // Cache invalidation
+        await redis.del('labtest-products:all');  // Cache invalidation
 
         return res.status(200).json({
             success: true,
-            message: "Vaccine product deleted successfully"
+            message: "LabTest product deleted successfully"
         });
     } catch (error) {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Error deleting vaccine product",
+            message: "Error deleting labtest product",
             error: error.message
         });
     }

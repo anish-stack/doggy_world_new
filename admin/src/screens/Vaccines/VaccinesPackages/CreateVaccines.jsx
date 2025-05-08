@@ -215,7 +215,7 @@ const CreateVaccines = () => {
                                 <Input
                                     id="price"
                                     name="price"
-                                    type="number"
+                                    type="text"
                                     value={formData.price}
                                     onChange={handleInputChange}
                                     required
@@ -227,7 +227,7 @@ const CreateVaccines = () => {
                                 <Input
                                     id="discount_price"
                                     name="discount_price"
-                                    type="number"
+                                    type="text"
                                     value={formData.discount_price}
                                     onChange={handleInputChange}
                                 />
@@ -313,7 +313,6 @@ const CreateVaccines = () => {
                             </div>
                         </div>
 
-                        {formData.is_package && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="home_price_of_package">Home Price (₹)</Label>
@@ -337,7 +336,7 @@ const CreateVaccines = () => {
                                     />
                                 </div>
                             </div>
-                        )}
+                   
                     </CardContent>
                 </Card>
                 <Card>

@@ -15,26 +15,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { BlurView } from 'expo-blur';
 import SectionTitle from '../../components/PartHeader.js/SectionTitle';
+import { API_END_POINT_URL_LOCAL } from '../../constant/constant';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
 const SPACING = 20;
 
-export default function Doctors() {
+export default function Doctors({Refresh}) {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDoctors();
-  }, []);
+  }, [Refresh]);
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('https://admindoggy.adsdigitalmedia.com/api/display-doctors?populate=*');
+      const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/doctors`);
       setDoctors(response.data.data);
       setLoading(false);
+
     } catch (err) {
+      console.log(err)
       setError('Failed to fetch doctors');
       setLoading(false);
     }
@@ -58,7 +61,7 @@ export default function Doctors() {
   }
 
   const BlurComponent = Platform.OS === 'ios' ? BlurView : View;
-
+  const sortedDoctor = doctors.sort((a,b)=> a.position - b.position)
   return (
     <View style={styles.container}>
 
@@ -77,14 +80,14 @@ export default function Doctors() {
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH + SPACING}
       >
-        {doctors.map((doctor) => (
+        {sortedDoctor.map((doctor) => (
           <TouchableOpacity
             key={doctor.id}
             style={styles.card}
             activeOpacity={0.95}
           >
             <Image
-              source={{ uri: doctor.image.url }}
+              source={{ uri: doctor.imageUrl.url }}
               style={styles.doctorImage}
             />
 
@@ -94,8 +97,8 @@ export default function Doctors() {
               tint="light"
             >
               <View style={styles.nameContainer}>
-                <Text style={styles.doctorName}>{doctor.Name}</Text>
-                {doctor.isBest && (
+                <Text style={styles.doctorName}>{doctor.name}</Text>
+                {doctor.is_best && (
                   <View style={styles.bestDoctorBadge}>
 
                     <Text style={styles.bestDoctorText}>Top Rated</Text>
@@ -108,7 +111,10 @@ export default function Doctors() {
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
                   <Text style={styles.statText}>{doctor.experience}</Text>
-                  <Text style={styles.statText}>{doctor.description}</Text>
+                  {doctor.description && (
+                     <Text style={styles.statText}>{doctor.description}</Text>
+                  )}
+          
                 </View>
 
               </View>

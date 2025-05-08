@@ -18,8 +18,8 @@ export default function Vaccination() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await axios.get('http://192.168.1.15:1337/api/collection-types?populate=*');
-                const fetchSliderData = await axios.get('http://192.168.1.15:1337/api/bakery-sliders?populate=*&filters[isVacination][$eq]=true');
+                const res = await axios.get('http://192.168.1.21:1337/api/collection-types?populate=*');
+                const fetchSliderData = await axios.get('http://192.168.1.21:1337/api/bakery-sliders?populate=*&filters[isVacination][$eq]=true');
                 setSlider(fetchSliderData.data.data);
                 setData(res.data.data);
             } catch (err) {

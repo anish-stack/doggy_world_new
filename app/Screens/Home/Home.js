@@ -114,7 +114,7 @@ export default function Home() {
     const memoizedLocationTab = useMemo(() => <LocationTab data={locData} />, [locData]);
     const memoizedSlider = useMemo(() => <Slider Refresh={refreshing} />, [refreshing]);
     const memoizedCategories = useMemo(() => <Categories Refresh={refreshing} />, [refreshing])
-    const memoizedDoctors = useMemo(() => <Doctors />, []);
+    const memoizedDoctors = useMemo(() => <Doctors  Refresh={refreshing} />, [refreshing]);
     const memoizedBlogs = useMemo(() => <Blogs />, []);
     const memoizedMade = useMemo(() => <Made />, []);
 

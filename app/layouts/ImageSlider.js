@@ -109,7 +109,7 @@ const ImageSlider = ({ images }) => {
 const styles = StyleSheet.create({
   sliderContainer: {
     width: '100%',
-    height: verticalScale(170),
+    height: verticalScale(140),
 
     overflow: 'hidden',
     position: 'relative',

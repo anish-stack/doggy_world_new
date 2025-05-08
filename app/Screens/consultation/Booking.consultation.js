@@ -103,7 +103,7 @@ export default function BookingConsultation() {
             }
         }
     }, [availableDates]);
-    console.log("done", fcmToken)
+
     const handleSelectDoctor = (doctor) => {
         setSelectedDoctor(doctor);
         setSelectedTime(null);

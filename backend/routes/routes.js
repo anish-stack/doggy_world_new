@@ -27,7 +27,10 @@ const { createGroomingPackagejson, getAllGroomingPackagesjson, getGroomingPackag
 const { createConsultation, updateConsultation, deleteConsultation, getAllConsultations, getSingleConsultation } = require('../controller/Consultations/Consultation');
 const { createDoctorConsultation, getAllDoctorConsultations, getSingleDoctorConsultation, updateDoctorConsultation, deleteDoctorConsultation } = require('../controller/Consultations/AvailableDoctors');
 const notificationController = require('../controller/FCM/NotificationToken');
-const { makeBookings, verifyPayment, getBookingStatus } = require('../controller/Consultations/BookingConsultaation');
+const { makeBookings, verifyPayment, getBookingStatus, MakeABookingForVaccines } = require('../controller/Consultations/BookingConsultaation');
+const { createAddress, getAllAddressesByPetId, getAddressById, updateAddress, deleteAddress } = require('../controller/Address/Address');
+const { createTypeOfLabTest, getAllTypeOfLabTests, getSingleTypeOfLabTest, updateTypeOfLabTest, deleteTypeOfLabTest } = require('../controller/LabControllers/TypeOfLabs');
+const { createLabTestProduct, getAllLabTestProducts, getSingleLabTestProduct, updateLabTestProduct, deleteLabTestProduct } = require('../controller/LabControllers/LabController');
 
 const router = express.Router();
 
@@ -51,6 +54,12 @@ router.delete('/pet-profile/:petId', deletePetProfile);
 router.put('/change-owner-number/:petId', changePetOwnerNumber);
 router.post('/verify-number-change-otp/:petId', verifyNumberChangeOtp);
 router.get('/all-pets', getAllPets);
+
+router.post('/addresses', isAuthenticated, createAddress);
+router.get('/addresses', isAuthenticated, getAllAddressesByPetId);
+router.get('/addresses/:id', getAddressById);
+router.put('/addresses/:id', updateAddress);
+router.delete('/addresses/:id', deleteAddress);
 
 
 router.post('/Fcm/register', notificationController.registerToken);
@@ -106,8 +115,24 @@ router.delete('/remove-vaccine-type/:id', deleteTypeOfVaccine);
 router.post('/vaccine-product', upload.array('images'), createVaccineProduct);
 router.get('/vaccine-products', getAllVaccineProducts);
 router.get('/vaccine-product/:id', getSingleVaccineProduct);
-router.put('/vaccine-update-product/:id', upload.array('image'), updateVaccineProduct);
+router.put('/vaccine-update-product/:id', upload.array('images'), updateVaccineProduct);
 router.delete('/vaccine-delete-product/:id', deleteVaccineProduct);
+
+
+// Create a New Lab test Type
+router.post('/create-LabTest-type', upload.single('image'), createTypeOfLabTest);
+router.get('/list-all-LabTest-types', getAllTypeOfLabTests);
+router.get('/LabTest-type-details/:id', getSingleTypeOfLabTest);
+router.put('/update-LabTest-type/:id', upload.single('image'), updateTypeOfLabTest);
+router.delete('/remove-LabTest-type/:id', deleteTypeOfLabTest);
+
+
+// Create a new Lab Test product
+router.post('/LabTest-product', upload.array('images'), createLabTestProduct);
+router.get('/LabTest-products', getAllLabTestProducts);
+router.get('/LabTest-product/:id', getSingleLabTestProduct);
+router.put('/LabTest-update-product/:id', upload.array('images'), updateLabTestProduct);
+router.delete('/LabTest-delete-product/:id', deleteLabTestProduct);
 
 
 
@@ -204,7 +229,7 @@ router.post('/clinic/verify-otp', verifyOTP);
 router.get('/clinic/get-all-clinic', getAllClinics);
 router.get('/clinic/get-clinic/:id', getClinicById);
 router.post('/clinic/update/:id', upload.array("images"), updateClinic);
-router.delete('/clinic/delete/:id',isAuthenticated, deleteClinic);
+router.delete('/clinic/delete/:id', isAuthenticated, deleteClinic);
 router.post('/clinic/login', clinicLogin);
 router.get('/dashboard-user', isAuthenticated, clinicUser);
 
@@ -278,8 +303,9 @@ router.get('/consultation-doctor/:id', getSingleDoctorConsultation);
 
 // Booking for consulations
 router.post('/booking-consultation-doctor', makeBookings);
+router.post('/booking-vaccinations', isAuthenticated, MakeABookingForVaccines);
 router.post('/booking-verify-payment', verifyPayment);
-router.get('/booking-status/:bookingId', getBookingStatus);
+router.get('/booking-status/:bookingId/:type', getBookingStatus);
 
 
 module.exports = router;

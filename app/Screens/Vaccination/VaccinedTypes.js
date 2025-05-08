@@ -19,11 +19,13 @@ import axios from 'axios';
 import { API_END_POINT_URL_LOCAL } from '../../constant/constant';
 import { Ionicons } from '@expo/vector-icons'; // Make sure to install expo/vector-icons
 import Call_Header from '../../components/Call_header/Call_Header';
+import { useNavigation } from '@react-navigation/native';
 
 const BANNER_TYPE = 'vaccination';
 const PHONE_NUMBER = 'tel:7217619794';
 
-const VaccineTypeCard = ({ item, index }) => {
+const VaccineTypeCard = ({ navigation, item}) => {
+    console.log(navigation)
     const [showFullDescription, setShowFullDescription] = useStateForDescription(false);
     const maxDescriptionLength = 80;
     const needsReadMore = item.description.length > maxDescriptionLength;
@@ -33,7 +35,7 @@ const VaccineTypeCard = ({ item, index }) => {
     };
 
     return (
-        <TouchableOpacity activeOpacity={0.7} style={styles.card}>
+        <TouchableOpacity onPress={() => navigation.navigate('vaccines', { type: item.title, id: item._id })} activeOpacity={0.7} style={styles.card}>
             <View style={styles.cardImageContainer}>
                 <Image
                     source={{ uri: item.image.url }}
@@ -73,6 +75,7 @@ const VaccinedTypes = () => {
     const [vaccineTypes, setVaccineTypes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigation = useNavigation()
     const [refreshing, setRefreshing] = useState(false);
     const handleCallPress = useCallback(() => {
         Linking.openURL(PHONE_NUMBER);
@@ -88,7 +91,7 @@ const VaccinedTypes = () => {
         try {
             const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/list-all-vaccine-types`);
             if (response.data && response.data.success) {
-              
+
                 const activeTypes = response.data.data.filter(item => item.is_active);
                 const sortedTypes = activeTypes.sort((a, b) => a.position - b.position);
                 setVaccineTypes(sortedTypes);
@@ -100,23 +103,23 @@ const VaccinedTypes = () => {
             setLoading(false);
         }
     };
-      const onRefresh = useCallback(() => {
+    const onRefresh = useCallback(() => {
         setRefreshing(true);
         // Simulate a network request
         setTimeout(() => {
             fetchVaccineTypes()
-          setRefreshing(false);
+            setRefreshing(false);
         }, 1500);
-      }, [fetchVaccineTypes]);
+    }, [fetchVaccineTypes]);
 
     return (
         <>
             <TopHeadPart title={'Pick Your Vaccine Spot!'} fnc={handleCallPress} />
 
             <SafeAreaView style={styles.safeArea}>
-                <ScrollView   refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }  showsVerticalScrollIndicator={false}>
+                <ScrollView refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                } showsVerticalScrollIndicator={false}>
                     <ImageSlider images={sliders} />
                     <Call_Header />
                     <View style={styles.container}>
@@ -139,14 +142,14 @@ const VaccinedTypes = () => {
                         ) : (
                             <View style={styles.cardsContainer}>
                                 {vaccineTypes.map((item, index) => (
-                                    <VaccineTypeCard key={item._id} item={item} index={index} />
+                                    <VaccineTypeCard navigation={navigation} key={item._id} item={item} index={index} />
                                 ))}
                             </View>
                         )}
 
-              
 
-                      
+
+
                     </View>
                 </ScrollView>
             </SafeAreaView>
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
     },
     bookButton: {
-        backgroundColor: '#ff3333',
+        backgroundColor: '#a60505',
         paddingVertical: 10,
         paddingHorizontal: 15,
         borderRadius: 6,
