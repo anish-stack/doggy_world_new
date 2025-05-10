@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 backend/.env
+backend/utils/doggy-f32b6-firebase-adminsdk-fbsvc-d409d66f45.json
 dist
 dist-ssr
 *.local
