@@ -75,8 +75,9 @@ const CartSlice = createSlice({
             });
         },
         RemoveCartItem: (state, action) => {
-            const { productIdToRemove } = action.payload;
-            state.CartItems = state.CartItems.filter(item => item.ProductId !== productIdToRemove);
+            console.log(" action.payload", action.payload)
+            const { ProductId } = action.payload;
+            state.CartItems = state.CartItems.filter(item => item.ProductId !== ProductId);
             state.CartCount = state.CartItems.length;
             storeCartItems(state.CartItems);
            

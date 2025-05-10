@@ -1,3 +1,4 @@
+// CartHeader.js
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import React from 'react';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -27,6 +28,8 @@ export default function CartHeader() {
                     />
                 </TouchableOpacity>
                 
+                <Text style={styles.headerTitle}>My Cart</Text>
+                
                 <View style={styles.headerContent}>
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
@@ -41,7 +44,7 @@ export default function CartHeader() {
                             <Icon 
                                 name="food-takeout-box-outline" 
                                 size={22} 
-                                color={isProductActive ? '#E53935' : '#fff'} 
+                                color={isProductActive ? '#FF6B6B' : '#fff'} 
                                 style={styles.icon} 
                             />
                             <Text style={[
@@ -64,7 +67,7 @@ export default function CartHeader() {
                             <Icon 
                                 name="doctor" 
                                 size={22} 
-                                color={isLabActive ? '#E53935' : '#fff'} 
+                                color={isLabActive ? '#FF6B6B' : '#fff'} 
                                 style={styles.icon} 
                             />
                             <Text style={[
@@ -75,41 +78,58 @@ export default function CartHeader() {
                     </View>
                 </View>
             </View>
-           
+            <View style={styles.bottomDecoration} />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#E53935', // Red 600
-        borderBottomLeftRadius: 16,
-        borderBottomRightRadius: 16,
+        backgroundColor: '#FF6B6B', // Softer red color
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
             },
             android: {
-                elevation: 6,
+                elevation: 8,
             },
         }),
     },
     headerWrapper: {
-        paddingTop: 16,
-        paddingBottom: 12,
+        paddingTop: 20,
+        paddingBottom: 16,
+    },
+    headerTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginBottom: 8,
+        ...Platform.select({
+            ios: {
+                fontFamily: 'System',
+            },
+            android: {
+                fontFamily: 'sans-serif-medium',
+            },
+        }),
     },
     backButton: {
         position: 'absolute',
         left: 16,
-        top: 0,
+        top: 18,
         zIndex: 10,
         width: 40,
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 20,
     },
     headerContent: {
         paddingHorizontal: 18,
@@ -118,32 +138,33 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.1)',
-        borderRadius: 12,
-        paddingVertical: 10,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 16,
+        paddingVertical: 6,
         marginTop: 8,
-        marginLeft: 24,
+        marginHorizontal: 24,
     },
     button: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12, // Slightly reduced to accommodate back button
-        paddingVertical: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         flex: 1,
         justifyContent: 'center',
+        borderRadius: 12,
     },
     activeButton: {
         backgroundColor: '#fff',
-        borderRadius: 8,
+        borderRadius: 12,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.2,
-                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
             },
             android: {
-                elevation: 2,
+                elevation: 3,
             },
         }),
     },
@@ -164,18 +185,19 @@ const styles = StyleSheet.create({
         }),
     },
     activeText: {
-        color: '#E53935',
+        color: '#FF6B6B',
         fontWeight: '700',
     },
     divider: {
-        height: 24,
+        height: 28,
         width: 1,
-        backgroundColor: 'rgba(255,255,255,0.5)',
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        marginHorizontal: 4,
     },
     bottomDecoration: {
-        height: 4,
-        backgroundColor: '#C62828', // Darker red for the bottom accent
-        borderBottomLeftRadius: 16,
-        borderBottomRightRadius: 16,
+        height: 6,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
     }
 });

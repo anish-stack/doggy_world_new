@@ -10,7 +10,7 @@ const { width } = Dimensions.get('window');
 
 // Memoize static data
 const BUSINESS_HOURS = "10:00 AM - 9:00 PM";
-const PHONE_NUMBER = 'tel:7217619794';
+const PHONE_NUMBER = 'tel:9811299059';
 const SLIDER_DELAY = 3000;
 const BANNER_TYPE = 'grooming';
 

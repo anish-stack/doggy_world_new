@@ -126,15 +126,42 @@ export default function BookingStep() {
 
     // Check if selected date is closed for booking
     const isDateClosed = useMemo(() => {
-        if (!selectedDate || !timeData) return false
+        try {
+            // Check if selectedDate and timeData are present
+            if (!selectedDate || !timeData) {
+                console.log('Error: selectedDate or timeData is missing');
+                return false;
+            }
 
-        const closedDate = new Date(timeData.Which_Date_booking_Closed)
-        return (
-            selectedDate.getDate() === closedDate.getDate() &&
-            selectedDate.getMonth() === closedDate.getMonth() &&
-            selectedDate.getFullYear() === closedDate.getFullYear()
-        )
-    }, [selectedDate, timeData])
+            // Ensure selectedDate is a Date object
+            const selectedDateObj = new Date(selectedDate);
+
+            // Check if the selectedDate is valid
+            if (isNaN(selectedDateObj)) {
+                console.log('Error: Invalid selectedDate', selectedDate);
+                return false;
+            }
+
+            console.log('Selected Date:', selectedDateObj);
+            console.log('Booking Closed Date:', timeData.Which_Date_booking_Closed);
+
+            // Convert booking closed date to Date object
+            const closedDate = new Date(timeData.Which_Date_booking_Closed);
+
+            // Check if the selected date matches the closed date
+            const isClosed = selectedDateObj.getDate() === closedDate.getDate() &&
+                selectedDateObj.getMonth() === closedDate.getMonth() &&
+                selectedDateObj.getFullYear() === closedDate.getFullYear();
+
+            console.log('Is Date Closed:', isClosed);
+
+            return isClosed;
+
+        } catch (error) {
+            console.error('Error in date comparison:', error);
+            return false;
+        }
+    }, [selectedDate, timeData]);
 
     const handleDateSelection = (date) => {
         console.log(date)
@@ -180,7 +207,7 @@ export default function BookingStep() {
             type: type,
             customizedData: customizedData,
             Package: Package,
-            date: selectedDate.toISOString(),
+            date: selectedDate,
             time: `${selectedTime.start} - ${selectedTime.end}`,
             status: "pending",
         };

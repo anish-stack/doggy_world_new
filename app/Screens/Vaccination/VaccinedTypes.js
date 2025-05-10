@@ -22,7 +22,7 @@ import Call_Header from '../../components/Call_header/Call_Header';
 import { useNavigation } from '@react-navigation/native';
 
 const BANNER_TYPE = 'vaccination';
-const PHONE_NUMBER = 'tel:7217619794';
+const PHONE_NUMBER = 'tel:9811299059';
 
 const VaccineTypeCard = ({ navigation, item}) => {
     console.log(navigation)

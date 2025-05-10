@@ -13,11 +13,11 @@ import { scale, verticalScale, moderateScale } from 'react-native-size-matters';
 
 const { width } = Dimensions.get('window');
 
-const ImageSlider = ({ images }) => {
+const ImageSlider = ({ images, height }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef(null);
-  
+
   const flattenedImages = useMemo(() => {
     if (!images || images.length === 0) return [];
     return images || [];
@@ -46,7 +46,7 @@ const ImageSlider = ({ images }) => {
   if (!flattenedImages.length) return null;
 
   return (
-    <View style={styles.sliderContainer}>
+    <View style={[styles.sliderContainer, { height: height ? height : verticalScale(140) }]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -109,16 +109,16 @@ const ImageSlider = ({ images }) => {
 const styles = StyleSheet.create({
   sliderContainer: {
     width: '100%',
-    height: verticalScale(140),
+
 
     overflow: 'hidden',
     position: 'relative',
-    
+
   },
   sliderImage: {
     width,
     height: '100%',
-   
+
   },
   pagination: {
     flexDirection: 'row',

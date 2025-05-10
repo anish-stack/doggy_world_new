@@ -226,3 +226,56 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
     throw new Error("Failed to send admin consultation email");
   }
 };
+exports.sendCustomePhysioEmail = async ({ data }) => {
+  const {
+    PhysioType,
+    date,
+    petname,
+    bookingId,
+    Payment,
+    time,
+    whenBookingDone,
+    ownerNumber = 'Customer'
+  } = data;
+
+  try {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: "anishjha896@gmail.com", // Admin email
+      subject: `New Physiotherapy Booking Received – Booking ID: ${bookingId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2 style="color: #00aaa9;">🐾 New Physiotherapy Booking Alert</h2>
+          <p>A new physiotherapy appointment has been successfully booked through the <strong>Doggy World Care</strong> platform.</p>
+
+          <h3 style="color: #003873;">📋 Booking Summary:</h3>
+          <ul style="line-height: 1.6;">
+            <li><strong>Booking ID:</strong> ${bookingId}</li>
+            <li><strong>Therapy Type:</strong> ${PhysioType}</li>
+            <li><strong>Pet Name:</strong> ${petname}</li>
+            <li><strong>Owner Contact:</strong> ${ownerNumber}</li>
+            <li><strong>Date of Appointment:</strong> ${date}</li>
+            <li><strong>Time:</strong> ${time}</li>
+            <li><strong>Payment Amount:</strong> ₹${Payment}</li>
+            <li><strong>Booked On:</strong> ${whenBookingDone}</li>
+          </ul>
+
+          <p>Please log in to the admin panel for full booking details and to take any necessary actions.</p>
+
+          <p style="margin-top: 20px;">Warm regards,<br/>
+          <strong>Doggy World Veterinary System</strong></p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Admin booking email sent:", info.messageId);
+    return info;
+
+  } catch (error) {
+    console.error("❌ Error sending admin physiotherapy booking email:", error);
+    throw new Error("Failed to send admin physiotherapy booking email");
+  }
+};

@@ -1,6 +1,7 @@
 const LabtestProduct = require("../../models/LabsTest/LabSchema");
 const { deleteMultipleFiles } = require("../../middleware/multer");
 const { uploadMultipleFiles, deleteMultipleFilesCloud } = require("../../utils/upload");
+const LabBooking = require("../../models/LabsTest/LabBooking");
 
 // Create a new labtest product
 exports.createLabTestProduct = async (req, res) => {
@@ -12,7 +13,10 @@ exports.createLabTestProduct = async (req, res) => {
             discount_price,
             off_percentage,
             is_active,
+            is_imaging_test,
             tag,
+            is_common_for_cat,
+            is_common_for_dog,
             forage,
             is_dog,
             is_popular,
@@ -132,11 +136,14 @@ exports.createLabTestProduct = async (req, res) => {
             forage,
             LabTestdInclueds,
             is_dog: is_dog === 'true' || is_dog === true,
+            is_common_for_cat: is_common_for_cat === 'true' || is_common_for_cat === true,
+            is_common_for_dog: is_common_for_dog === 'true' || is_common_for_dog === true,
             is_popular: is_popular === 'true' || is_popular === true,
             is_cat: is_cat === 'true' || is_cat === true,
             small_desc,
             desc,
             position,
+            is_imaging_test: is_imaging_test === 'true' || is_imaging_test === true,
             home_price_of_package: home_price_of_package ? parseFloat(home_price_of_package) : undefined,
             home_price_of_package_discount: home_price_of_package_discount ? parseFloat(home_price_of_package_discount) : undefined,
             mainImage,
@@ -203,7 +210,7 @@ exports.getAllLabTestProducts = async (req, res) => {
     try {
 
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 1000;
 
 
         const skip = (page - 1) * limit;
@@ -381,3 +388,36 @@ exports.deleteLabTestProduct = async (req, res) => {
         });
     }
 };
+
+
+
+exports.AllBookingsOfLab = async (req, res) => {
+    try {
+        const { date } = req.params; // format: 'YYYY-MM-DD'
+        console.log("date", date)
+        const startOfDay = new Date(date);
+        const endOfDay = new Date(date);
+        endOfDay.setUTCHours(23, 59, 59, 999); // End of that date in UTC
+
+        const BookingOfLab = await LabBooking.find({
+            selectedDate: date
+        });
+
+        console.log('BookingOfLab',BookingOfLab.length)
+      
+
+        res.status(200).json({
+            success: true,
+            message: 'Bookings fetched successfully',
+            data: BookingOfLab,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch bookings',
+            error: error.message,
+        });
+    }
+};
+

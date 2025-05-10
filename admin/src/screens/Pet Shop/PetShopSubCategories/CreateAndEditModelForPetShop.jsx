@@ -31,7 +31,7 @@ const CreateAndEditModelForPetShop = ({ isOpen, onClose, onSuccess, category = n
     position: "",
     active: true,
 
-    parentCategory:[]
+    parentCategory: []
   })
 
   // Image state
@@ -52,7 +52,7 @@ const CreateAndEditModelForPetShop = ({ isOpen, onClose, onSuccess, category = n
         name: category.name || "",
         position: category.position || "",
         active: category.active !== undefined ? category.active : true,
-        parentCategory: category.parentCategory.map((item)=> item._id) || "",
+        parentCategory: category.parentCategory.map((item) => item._id) || "",
       })
 
       if (category.imageUrl && category.imageUrl.url) {
@@ -73,10 +73,10 @@ const CreateAndEditModelForPetShop = ({ isOpen, onClose, onSuccess, category = n
         console.error('Error fetching categories:', error);
       }
     };
-  
+
     fetchCate(); // Call the function
   }, []); // Empty dependency array to run once on mount
-  
+
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -160,7 +160,7 @@ const CreateAndEditModelForPetShop = ({ isOpen, onClose, onSuccess, category = n
       newErrors.position = "Position must be a positive number"
     }
 
-  
+
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -287,22 +287,22 @@ const CreateAndEditModelForPetShop = ({ isOpen, onClose, onSuccess, category = n
           </div>
 
           <MultiSelect
-                            id="parentCategory"
-                            options={categories.map(f => ({ label: f.title, value: f._id }))}
-                            selected={formData.parentCategory}
-                            onChange={(selected) => setFormData({ ...formData, parentCategory: selected })}
-                        />
+            id="parentCategory"
+            options={categories.map(f => ({ label: f.title, value: f._id }))}
+            selected={formData.parentCategory}
+            onChange={(selected) => setFormData({ ...formData, parentCategory: selected })}
+          />
 
           {/* Image Upload */}
           <div className="space-y-2">
             <Label htmlFor="image">Category Image</Label>
 
             {/* Existing Image (Edit Mode) */}
-            {isEditMode && existingImage && !removeExistingImage && (
+            {isEditMode &&  (
               <div className="mb-2">
                 <div className="relative inline-block">
                   <img
-                    src={existingImage.url || "/placeholder.svg"}
+                    src={existingImage?.url || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWWPcQQyvTRQ2MrpTGPe1yBBDFbEkQEhviXw&s"}
                     alt="Current category image"
                     className="h-32 w-32 object-cover rounded-md border"
                   />

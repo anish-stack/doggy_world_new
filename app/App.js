@@ -42,11 +42,11 @@ import PetShop from "./Screens/Pet_Shop/PetShop";
 import Dynamic_Shop from "./Screens/Pet_Shop/_Shop/Dynamic_Shop";
 import Dynmaic_Products_Shop from "./Screens/Pet_Shop/_Shop/Dynmaic_Products_Shop";
 import Dynamic_Details_Shop from "./Screens/Pet_Shop/_Shop/Dynamic_Details_Shop";
-import Lab_Test from "./Screens/Labs/Lab_Test";
-import Lab_Clinic from "./Screens/Labs/Lab_Clinic";
-import TestPage from "./Screens/Labs/TestPage";
-import Book_Test from "./Screens/Labs/Book_Test";
-import Single_Test from "./Screens/Labs/Single_Test";
+// import Lab_Test from "./Screens/Labs/Lab_Test";
+// import Lab_Clinic from "./Screens/Labs/Lab_Clinic";
+// import TestPage from "./Screens/Labs/TestPage";
+// import Book_Test from "./Screens/Labs/Book_Test";
+// import Single_Test from "./Screens/Labs/Single_Test";
 import SuperficialNoter from "./Screens/SuperficialCart/SuperficialNoter";
 import SuperficialCart from "./Screens/SuperficialCart/SuperficialCart";
 // import Vaccinations from "./Screens/Vaccination/Vaccinations";
@@ -84,6 +84,11 @@ import VaccinedTypes from "./Screens/Vaccination/VaccinedTypes";
 import VaccinesShows from "./Screens/NewVaccines/VaccinesShows";
 import VaccineDetailsNew from "./Screens/NewVaccines/VaccineDetailsNew";
 import BookingVaccine from "./Screens/NewVaccines/forInstantBooking/BookingVaccine";
+import NewLabTypes from "./Screens/NewLabs/NewLabTypes";
+import LabTestsShow from "./Screens/NewLabs/LabTestsShow";
+import LabTestDetails from "./Screens/NewLabs/LabTestDetails";
+import BookingLabTests from "./Screens/NewLabs/instantBooking/BookingLabTests";
+import PhysioBooking from "./Screens/Physiotherapy/PhysioBooking";
 
 // Prevent SplashScreen from hiding automatically
 SplashScreen.preventAutoHideAsync();
@@ -294,7 +299,7 @@ const App = () => {
           <Stack.Screen name="single-blog" component={SingleBlog} options={screenConfigs.noHeader} />
 
           {/* Pet Shop Screen */}
-          <Stack.Screen name="Pet_Shop" component={PetShop} options={screenConfigs.withTitle("Pet Shop")} />
+          <Stack.Screen name="Pet_Shop" component={PetShop}options={{ ...screenConfigs.noHeader, title: "PetShop" }} />
           <Stack.Screen name="Dynamic_Shop" component={Dynamic_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
           <Stack.Screen name="Dynamic_Products_Shop" component={Dynmaic_Products_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
           <Stack.Screen name="Dynamic_Details_Shop" component={Dynamic_Details_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
@@ -303,22 +308,26 @@ const App = () => {
           <Stack.Screen name="select_address_and_order" component={Address} options={screenConfigs.noHeader} />
 
           {/* Lab Test Screen */}
-          <Stack.Screen name="Lab_Test" component={Lab_Test} options={screenConfigs.noHeader} />
+
+          {/* 
           <Stack.Screen name="lab_Clinic" component={Lab_Clinic} options={screenConfigs.noHeader} />
           <Stack.Screen name="TestPage" component={TestPage} options={screenConfigs.noHeader} />
           <Stack.Screen name="next-step_booking_lab" component={Book_Test} options={screenConfigs.noHeader} />
-          <Stack.Screen name="TestSelection" component={Single_Test} options={screenConfigs.noHeader} />
+          <Stack.Screen name="TestSelection" component={Single_Test} options={screenConfigs.noHeader} /> */}
           <Stack.Screen name="labCart" component={SuperficialCart} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
           <Stack.Screen name="Booking_Test_Confirm" component={Booking_Test_Confirm} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
           {/* New Lab Test Screens */}
-          <Stack.Screen name="Lab" component={New_Tests} options={{ ...screenConfigs.noHeader }} />
+          <Stack.Screen name="Lab" component={NewLabTypes} options={{ ...screenConfigs.noHeader }} />
+          <Stack.Screen name="labtests" component={LabTestsShow} options={{ ...screenConfigs.noHeader }} />
+          <Stack.Screen name="LabDetailsDetail" component={LabTestDetails} options={{ ...screenConfigs.noHeader }} />
+          <Stack.Screen name="book-now-labtest" component={BookingLabTests} options={{ ...screenConfigs.noHeader }} />
 
           {/* vaccination */}
-          <Stack.Screen name="vaccination" component={VaccinedTypes}  options={{ ...screenConfigs.noHeader, title: "Lab Test" }}  />
-          <Stack.Screen name="vaccines" component={VaccinesShows}  options={{ ...screenConfigs.noHeader, title: "vaccines" }}  />
-          <Stack.Screen name="VaccineDetail" component={VaccineDetailsNew}  options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }}  />
-          <Stack.Screen name="book-now-vaccine" component={BookingVaccine}  options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }}  />
+          <Stack.Screen name="vaccination" component={VaccinedTypes} options={{ ...screenConfigs.noHeader, title: "Lab Test" }} />
+          <Stack.Screen name="vaccines" component={VaccinesShows} options={{ ...screenConfigs.noHeader, title: "vaccines" }} />
+          <Stack.Screen name="VaccineDetail" component={VaccineDetailsNew} options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }} />
+          <Stack.Screen name="book-now-vaccine" component={BookingVaccine} options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }} />
 
           {/* <Stack.Screen name="vaccination_home" component={Vaccination} options={screenConfigs.withTitle("Vaccination")} />
           <Stack.Screen name="vaccination_booked" component={BookVaccination} options={screenConfigs.withTitle("Booking Successful 😃")} />
@@ -329,8 +338,9 @@ const App = () => {
           <Stack.Screen name="Coming_soon" component={Coming_soon} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
 
           {/* Physiotherapy */}
-          <Stack.Screen name="Physiotherapy" component={Physiotherapy} options={screenConfigs.withTitle("Physiotherapy")} />
-          <Stack.Screen name="PhysiotherapyDetails" component={PhysiotherapyDetails} options={screenConfigs.withTitle("Details About Therapy")} />
+          <Stack.Screen name="Physiotherapy" component={Physiotherapy} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
+          <Stack.Screen name="PhysioBooking" component={PhysioBooking} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
+          <Stack.Screen name="PhysiotherapyDetails" component={PhysiotherapyDetails} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
           <Stack.Screen name="*" component={NotFoundScreen} options={screenConfigs.withTitle("Details About Therapy")} />
 
           {/* Clinic Screen */}

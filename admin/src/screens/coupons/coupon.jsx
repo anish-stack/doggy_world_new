@@ -650,6 +650,8 @@ const Coupon = () => {
                     <SelectItem value="Pet Shop">Pet Shop</SelectItem>
                     <SelectItem value="Pet Bakery">Pet Bakery</SelectItem>
                     <SelectItem value="Vaccineations">Vaccinations</SelectItem>
+                    <SelectItem value="physiotherapy">physiotherapy</SelectItem>
+     
                     <SelectItem value="Lab Test">Lab Test</SelectItem>
                   </SelectContent>
                 </Select>

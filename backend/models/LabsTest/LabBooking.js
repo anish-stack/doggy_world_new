@@ -30,12 +30,20 @@ const LabTestBookingSchema = new mongoose.Schema({
     },
     selectedDate: {
         type: Date,
-
+    },
+    rescheduledDate: {
+        type: Date,
+        default:null
     },
 
+    rescheduledTime: {
+        type: String,
+        default:null
+
+    },
     selectedTime: {
         type: String,
-
+        default:null
     },
 
     bookingPart: {
@@ -78,6 +86,11 @@ const LabTestBookingSchema = new mongoose.Schema({
         min: 0,
         max: 5,
         default: 0
+    },
+    ReportId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Report',
+        default:null
     }
 
 }, { timestamps: true });

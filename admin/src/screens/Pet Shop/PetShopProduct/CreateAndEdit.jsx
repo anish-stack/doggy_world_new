@@ -585,11 +585,12 @@ const CreateAndEditProductShop = () => {
                                 <Input
                                     id="discountPrice"
                                     name="discountPrice"
-                                    type="number"
+                                    type="text"
+                                       onChange={handleInputChange}
                                     value={formData.discountPrice}
                                     placeholder="Calculated automatically"
                                     className="mt-1 bg-gray-100"
-                                    disabled
+                                    
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
                                     Automatically calculated based on price and discount percentage

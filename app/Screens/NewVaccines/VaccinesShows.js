@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { API_END_POINT_URL_LOCAL } from '../../constant/constant';
 
-const PHONE_NUMBER = 'tel:7217619794';
+const PHONE_NUMBER = 'tel:9811299059';
 const SECTIONS = ['Package', 'Cat', 'Dog']; // Categories for our sections
 
 export default function VaccinesShows() {

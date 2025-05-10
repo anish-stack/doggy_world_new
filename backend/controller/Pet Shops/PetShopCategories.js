@@ -87,9 +87,12 @@ exports.updatePetShopCategory = async (req, res) => {
         const file = req.file;
 
         const category = await PetShopCategoriesSchema.findById(id);
-        
-        const checkAvailablePosition = await PetShopCategoriesSchema.findOne({ position });
-        
+
+        const checkAvailablePosition = await PetShopCategoriesSchema.findOne({
+            position: Number(position),
+            _id: { $ne: id }, 
+        });
+
         if (checkAvailablePosition) {
             if (file) await deleteFile(file.path);
             return res.status(400).json({
@@ -98,8 +101,9 @@ exports.updatePetShopCategory = async (req, res) => {
             });
         }
 
+
         if (!category) return res.status(404).json({ success: false, message: "Category not found" });
-    
+
 
         if (file) {
             const uploadResult = await uploadSingleFile(file);
@@ -120,6 +124,7 @@ exports.updatePetShopCategory = async (req, res) => {
 
         if (file) {
             await deleteFile(file.path);
+            console.log("publicIdToDelete",publicIdToDelete)
             if (publicIdToDelete) await deleteFileCloud(publicIdToDelete);
         }
 

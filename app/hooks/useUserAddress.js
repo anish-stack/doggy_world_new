@@ -25,9 +25,6 @@ const useUserAddress = () => {
                 },
             });
     
-            console.log("Full API Response:", response.data.data);
-    
-  
     
             setAddress(response.data.data || []);
         } catch (err) {

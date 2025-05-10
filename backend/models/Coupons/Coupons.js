@@ -36,7 +36,7 @@ const CakeCouponSchema = new mongoose.Schema({
     category: {
         type: String,
         default: "Cakes",
-        enum: ["Cakes", "Pet Shop", "Pet Bakery", "Vaccineations", "Lab Test"]
+        enum: ["Cakes", "Pet Shop", "Pet Bakery", "Vaccineations", "Lab Test","physiotherapy"]
     }
 }, { timestamps: true });
 

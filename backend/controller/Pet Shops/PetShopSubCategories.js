@@ -82,6 +82,7 @@ exports.createPetShopSubCategory = async (req, res) => {
         const redis = req.app.get('redis');
         const keys = await redis.keys('PetShopSubCat:*');
         if (keys.length > 0) await redis.del(keys);
+      await flushPetShopSubCategoryCache(req.app.get('redis'));
 
         return res.status(201).json({
             success: true,
@@ -183,6 +184,7 @@ exports.updatePetShopSubCategory = async (req, res) => {
         const redis = req.app.get('redis');
         const keys = await redis.keys('PetShopSubCat:*');
         if (keys.length > 0) await redis.del(keys);
+      await flushPetShopSubCategoryCache(req.app.get('redis'));
 
         return res.json({
             success: true,
@@ -217,6 +219,7 @@ exports.deletePetShopSubCategory = async (req, res) => {
 
         const redis = req.app.get('redis');
         const keys = await redis.keys('PetShopSubCat:*');
+      await flushPetShopSubCategoryCache(req.app.get('redis'));
         if (keys.length > 0) await redis.del(keys);
 
         return res.json({ success: true, message: "Sub Category deleted successfully" });
@@ -295,5 +298,75 @@ exports.getSinglePetShopSubCategory = async (req, res) => {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    }
+};
+
+exports.getPetShopSubCategoryByCategories = async (req, res) => {
+    try {
+        const redis = req.app.get('redis');
+        const { id } = req.params;
+
+        const cacheKey = `PetShopSubCategoryByCategories:${id}`;
+
+        // Check Redis cache first
+        const cachedData = await redis.get(cacheKey);
+        if (cachedData) {
+            return res.json({
+                success: true,
+                message: "Sub Category fetched successfully (from cache)",
+                data: JSON.parse(cachedData),
+            });
+        }
+
+        // If not in cache, fetch from DB
+        const category = await PetShopSubCategoriesSchema.find({
+            parentCategory: { $in: [id] }
+        });
+
+        if (!category || category.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Sub Category not found"
+            });
+        }
+
+        // Store result in Redis for future requests (optional: set expiry)
+        await redis.set(cacheKey, JSON.stringify(category), 'EX', 3600); // expires in 1 hour
+
+        return res.json({
+            success: true,
+            message: "Sub Category fetched successfully",
+            data: category
+        });
+
+    } catch (error) {
+        console.error("Redis/Mongo error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+            error: error.message
+        });
+    }
+};
+
+
+const flushPetShopSubCategoryCache = async (redis) => {
+    try {
+        const pattern = 'PetShopSubCategoryByCategories:*';
+        let cursor = '0';
+
+        do {
+            const reply = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+            cursor = reply[0];
+            const keys = reply[1];
+
+            if (keys.length > 0) {
+                await redis.del(...keys); // Or use unlink for non-blocking delete
+            }
+        } while (cursor !== '0');
+
+        console.log('✅ PetShopSubCategoryByCategories cache cleared.');
+    } catch (error) {
+        console.error('❌ Error flushing PetShopSubCategoryByCategories cache:', error);
     }
 };

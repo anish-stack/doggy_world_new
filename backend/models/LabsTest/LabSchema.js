@@ -68,7 +68,19 @@ const LabSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    is_imaging_test: {
+        type: Boolean,
+        default: false
+    },
     is_cat: {
+        type: Boolean,
+        default: false
+    },
+    is_common_for_dog: {
+        type: Boolean,
+        default: false
+    },
+    is_common_for_cat: {
         type: Boolean,
         default: false
     },

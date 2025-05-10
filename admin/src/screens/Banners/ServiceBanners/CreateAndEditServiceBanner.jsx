@@ -37,9 +37,19 @@ import { API_URL } from "@/constant/Urls";
 
 const SERVICE_TYPES = [
   { value: "consultation", label: "Consultation" },
+  { value: "Dry Food", label: "Dryfood" },
+  { value: "Toys", label: "Toys" },
+  { value: "Treats", label: "Treats" },
+  { value: "WetFood", label: "Wet Food" },
+  { value: "WinterWears", label: "WinterWears" },
+  { value: "Bones", label: "Bones" },
+  { value: "SummerWears", label: "Summer Wears" },
+  { value: "Chicken", label: "Chicken" },
+  { value: "VegFoods", label: "Veg Foods" },
   { value: "vaccination", label: "Vaccination" },
   { value: "grooming", label: "Grooming" },
   { value: "medical", label: "Medical Services" },
+  { value: "shop", label: "Pet Shop " },
   { value: "wellness", label: "Wellness Programs" },
   { value: "therapy", label: "Therapy Sessions" },
   { value: "diagnostic", label: "Diagnostic Services" },
@@ -186,8 +196,8 @@ export default function CreateAndEditServiceBanner() {
       }
 
       // Check file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        setImageError("Image size should be less than 2MB");
+      if (file.size > 10 * 1024 * 1024) {
+        setImageError("Image size should be less than 10MB");
         hasError = true;
         return;
       }

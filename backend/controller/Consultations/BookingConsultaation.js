@@ -5,13 +5,19 @@ const ConsultationDoctors = require("../../models/Consultations/ConsultationDoct
 const AppError = require("../../utils/ApiError");
 const PetRegister = require("../../models/petAndAuth/petregister");
 const PaymentSchema = require("../../models/PaymentSchema/PaymentSchema");
+const LabtestProduct = require("../../models/LabsTest/LabSchema");
+const LabTestBooking = require("../../models/LabsTest/LabBooking");
+
 const sendNotification = require("../../utils/sendNotification");
-const { sendCustomeConulationEmail } = require("../../utils/sendEmail");
+const { sendCustomeConulationEmail, sendCustomePhysioEmail } = require("../../utils/sendEmail");
 const sendConsultationComplete = require("../../utils/whatsapp/consultationMsg");
 const VaccinationSchema = require("../../models/VaccinationSchema/VaccinationSchema");
 const VaccinationBooking = require("../../models/VaccinationSchema/VaccinationBooking");
 const ClinicRegister = require("../../models/ClinicRegister/ClinicRegister");
 const dayjs = require('dayjs');
+const SettingsModel = require("../../models/Settings/Settings.model");
+const BookingPhysioModel = require("../../models/PhysioTherapy/BookingPhysio.model");
+const sendPhysioComplete = require("../../utils/whatsapp/sendPhsiyoMessage");
 const razorpayUtils = new RazorpayUtils(
   process.env.RAZORPAY_KEY_ID,
   process.env.RAZORPAY_KEY_SECRET
@@ -151,7 +157,7 @@ exports.makeBookings = async (req, res) => {
 
 exports.MakeABookingForVaccines = async (req, res) => {
   try {
-    // Extract user and request data
+
     const user = req.user?.id;
     const {
       vaccine,
@@ -428,7 +434,584 @@ exports.MakeABookingForVaccines = async (req, res) => {
 }
 
 
+exports.MakeABookingForlabTest = async (req, res) => {
+  try {
+    const user = req.user?.id;
+    const {
+      labTest,
+      clinic,
+      bookingType,
+      selectedDate,
+      selectedTime,
+      bookingPart,
+      address,
+      couponCode,
+      couponDiscount,
+      totalPayableAmount,
+      fcmToken
+    } = req.body;
+    console.log(req.body)
 
+    // Validate required fields
+    const requiredFields = [
+      { field: 'labTest', message: 'Please select at least one test' },
+      { field: 'bookingType', message: 'Please select a booking type' },
+      { field: 'selectedDate', message: 'Please select an appointment date' },
+      { field: 'selectedTime', message: 'Please select an appointment time' },
+      { field: 'totalPayableAmount', message: 'Payment amount is required' }
+    ];
+
+    // Check if clinic is required based on booking type
+    if (bookingType === 'Clinic') {
+      requiredFields.push({ field: 'clinic', message: 'Please select a clinic' });
+    }
+
+    // Validate all required fields are present
+    for (const { field, message } of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({
+          success: false,
+          message,
+          field
+        });
+      }
+    }
+
+    // Validate user is logged in
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your session has expired. Please login again to continue.',
+        code: 'SESSION_EXPIRED'
+      });
+    }
+
+    // Verify pet owner exists
+    const petExisting = await PetRegister.findOne({ _id: user });
+    if (!petExisting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pet profile not found. Please create a pet profile before booking a service.',
+        code: 'PET_NOT_FOUND'
+      });
+    }
+
+
+    let labtestProduct = labTest;
+
+    // Normalize to array if it's a string or comma-separated string
+    if (typeof labtestProduct === 'string') {
+      labtestProduct = labtestProduct.includes(',') ? labtestProduct.split(',') : [labtestProduct];
+    }
+
+    // Validate and collect active lab tests
+    const selectedLabTests = [];
+
+    for (const labId of labtestProduct) {
+      const labTest = await LabtestProduct.findById(labId);
+
+      if (!labTest) {
+        return res.status(404).json({
+          success: false,
+          message: 'The selected lab test is not available. Please choose another lab test.',
+          code: 'LAB_TEST_NOT_FOUND',
+        });
+      }
+
+      if (!labTest.is_active) {
+        return res.status(403).json({
+          success: false,
+          message: `${labTest.title} bookings are temporarily unavailable. Please try again later or contact support.`,
+          code: 'LAB_TEST_INACTIVE',
+        });
+      }
+
+      selectedLabTests.push(labTest._id); // Push only the ID
+    }
+
+    console.log(selectedLabTests)
+    // Check clinic details if it's a clinic booking
+    let clinicDetails;
+    if (bookingType === 'Clinic') {
+      if (!clinic) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a clinic for your appointment.',
+          code: 'CLINIC_REQUIRED'
+        });
+      }
+
+      clinicDetails = await ClinicRegister.findById(clinic);
+      if (!clinicDetails) {
+        return res.status(404).json({
+          success: false,
+          message: 'The selected clinic is not available. Please choose another clinic.',
+          code: 'CLINIC_NOT_FOUND'
+        });
+      }
+
+      // Check if clinic is closed on selected date
+      if (clinicDetails.anyCloseDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'The selected clinic is closed on this date. Please select another date or clinic.',
+          code: 'CLINIC_CLOSED'
+        });
+      }
+    }
+
+    // Validate date is not in the past
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const bookingDate = new Date(selectedDate);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    if (bookingDate < currentDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot book an appointment for a past date. Please select a future date.',
+        code: 'PAST_DATE'
+      });
+    }
+
+    // Get admin settings for lab test bookings
+    const AdminSettings = await SettingsModel.findOne();
+    const labtTestSettings = AdminSettings.labTestBookingTimes;
+
+    // Check if booking is allowed on the selected day
+    const { name: dayName } = getIndiaDay(selectedDate);
+    if (labtTestSettings?.whichDayBookingClosed.includes(dayName)) {
+      return res.status(400).json({
+        success: false,
+        message: `Bookings are closed on ${dayName}. Please select another date.`,
+        code: 'DAY_CLOSED'
+      });
+    }
+
+    // Create time objects for validation
+    const businessHoursStart = dayjs(`${selectedDate} ${labtTestSettings.start}`, 'YYYY-MM-DD HH:mm');
+    const businessHoursEnd = dayjs(`${selectedDate} ${labtTestSettings.end}`, 'YYYY-MM-DD HH:mm');
+    const bookingTime = dayjs(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
+
+    // Check if selected time is within business hours
+    if (bookingTime.isBefore(businessHoursStart) || bookingTime.isAfter(businessHoursEnd)) {
+      return res.status(400).json({
+        success: false,
+        message: `The selected time is outside lab test hours (${labtTestSettings.start} - ${labtTestSettings.end}). Please select a time within operating hours.`,
+        code: 'OUTSIDE_HOURS'
+      });
+    }
+
+    // Check if selected time is in disabled time slots
+    const isDisabledTime = labtTestSettings.disabledTimeSlots.some(slot => {
+      if (slot.type === 'single' && slot.time === selectedTime) {
+        return true;
+      }
+
+      if (slot.type === 'range') {
+        const rangeStart = dayjs(`${selectedDate} ${slot.start}`, 'YYYY-MM-DD HH:mm');
+        const rangeEnd = dayjs(`${selectedDate} ${slot.end}`, 'YYYY-MM-DD HH:mm');
+        return bookingTime.isAfter(rangeStart) && bookingTime.isBefore(rangeEnd) ||
+          bookingTime.isSame(rangeStart) ||
+          bookingTime.isSame(rangeEnd);
+      }
+
+      return false;
+    });
+
+    if (isDisabledTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'This time slot is not available for booking. Please select another time.',
+        code: 'DISABLED_TIME_SLOT'
+      });
+    }
+
+    // Validate time slot based on gap between and ensure it aligns with the gapBetween setting
+    const minutesFromStart = bookingTime.diff(businessHoursStart, 'minute');
+    if (minutesFromStart % labtTestSettings.gapBetween !== 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Please select a valid time slot. Appointments are scheduled every ${labtTestSettings.gapBetween} minutes.`,
+        code: 'INVALID_TIME_SLOT'
+      });
+    }
+
+    // Find existing bookings for the selected time slot
+    let existingBookings = await LabTestBooking.find({
+      selectedDate,
+      selectedTime,
+      status: { $nin: ['Cancelled', 'Rescheduled', 'Pending'] }
+    });
+
+    // Check if time slot is fully booked
+    if (existingBookings.length >= labtTestSettings.perGapLimitBooking) {
+      return res.status(400).json({
+        success: false,
+        message: `This time slot is fully booked. Please select another time.`,
+        code: 'SLOT_FULL'
+      });
+    }
+
+    const bookingRef = `LAB-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // Create Razorpay payment order with proper amount formatting
+    try {
+      const paymentData = {
+        amount: Math.round(totalPayableAmount) * 100, // Convert to paise
+        currency: 'INR',
+        receipt: bookingRef,
+        notes: {
+          bookingType,
+          userId: user,
+          labtest: selectedLabTests.map(lab => lab.title).join(', '),
+          petName: petExisting.name || 'Pet'
+        }
+      };
+
+      const paymentResult = await razorpayUtils.createPayment(paymentData);
+
+      if (!paymentResult.success) {
+        console.error('Payment creation failed:', paymentResult.error);
+        return res.status(500).json({
+          success: false,
+          message: 'Unable to initialize payment. Please try again later.',
+          code: 'PAYMENT_INIT_FAILED'
+        });
+      }
+
+      // Save payment record
+      const saveInPayment = await PaymentSchema.create({
+        forWhat: 'labtest',
+        petid: user,
+        razorpay_order_id: paymentResult?.order?.id,
+        amount: paymentResult?.order?.amount,
+        status: paymentResult?.order?.status
+      });
+
+      // Create booking record
+      const newBooking = await LabTestBooking.create({
+        labTests: selectedLabTests,
+        clinic: bookingType === 'Clinic' ? clinic : null,
+        bookingType,
+        selectedDate,
+        selectedTime,
+        bookingPart,
+        Address: address ? address : null,
+        couponCode,
+        couponDiscount,
+        totalPayableAmount,
+        pet: user,
+        bookingRef,
+        payment: saveInPayment._id,
+        status: 'Pending',
+        fcmToken
+      });
+
+      // Successful response
+      return res.status(201).json({
+        success: true,
+        message: 'Your lab test appointment has been booked successfully!',
+        data: {
+          booking: newBooking,
+          payment: {
+            orderId: paymentResult.order.id,
+            amount: totalPayableAmount,
+            key: paymentResult.key,
+            bookingId: newBooking._id
+          }
+        }
+      });
+
+    } catch (paymentError) {
+      console.error('Payment processing error:', paymentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Payment processing failed. Please try again or contact support.',
+        code: 'PAYMENT_PROCESSING_ERROR'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in MakeABookingForlabTest:', error);
+
+    // Check for specific error types
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please check your input and try again.',
+        errors: Object.values(error.errors).map(err => err.message),
+        code: 'VALIDATION_ERROR'
+      });
+    }
+
+    if (error.name === 'MongoError' && error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'This appointment has already been booked. Please try with different details.',
+        code: 'DUPLICATE_BOOKING'
+      });
+    }
+
+    // Default error response
+    return res.status(500).json({
+      success: false,
+      message: 'Something went wrong while booking your appointment. Please try again later.',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
+
+exports.MakeABookingForPhysio = async (req, res) => {
+  try {
+    const user = req.user?.id;
+    const {
+      physio,
+      bookingType,
+      selectedDate,
+      selectedTime,
+      couponCode,
+      couponDiscount,
+      totalPayableAmount,
+      fcmToken
+    } = req.body;
+   
+
+    // Validate required fields
+    const requiredFields = [
+      { field: 'physio', message: 'Please select at least one test' },
+      { field: 'selectedDate', message: 'Please select an appointment date' },
+      { field: 'selectedTime', message: 'Please select an appointment time' },
+      { field: 'totalPayableAmount', message: 'Payment amount is required' }
+    ];
+
+    // Validate all required fields are present
+    for (const { field, message } of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({
+          success: false,
+          message,
+          field
+        });
+      }
+    }
+
+    // Validate user is logged in
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your session has expired. Please login again to continue.',
+        code: 'SESSION_EXPIRED'
+      });
+    }
+
+    // Verify pet owner exists
+    const petExisting = await PetRegister.findOne({ _id: user });
+    if (!petExisting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pet profile not found. Please create a pet profile before booking a service.',
+        code: 'PET_NOT_FOUND'
+      });
+    }
+
+    // Validate date is not in the past
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const bookingDate = new Date(selectedDate);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    if (bookingDate < currentDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot book an appointment for a past date. Please select a future date.',
+        code: 'PAST_DATE'
+      });
+    }
+
+    // Get admin settings for lab test bookings
+    const AdminSettings = await SettingsModel.findOne();
+    const physiotherapyBooking = AdminSettings.physiotherapyBookingTimes;
+
+    const { name: dayName } = getIndiaDay(selectedDate);
+    if (physiotherapyBooking?.whichDayBookingClosed.includes(dayName)) {
+      return res.status(400).json({
+        success: false,
+        message: `Bookings are closed on ${dayName}. Please select another date.`,
+        code: 'DAY_CLOSED'
+      });
+    }
+
+    // Create time objects for validation
+    const businessHoursStart = dayjs(`${selectedDate} ${physiotherapyBooking.start}`, 'YYYY-MM-DD HH:mm');
+    const businessHoursEnd = dayjs(`${selectedDate} ${physiotherapyBooking.end}`, 'YYYY-MM-DD HH:mm');
+    const bookingTime = dayjs(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
+
+    // Check if selected time is within business hours
+    if (bookingTime.isBefore(businessHoursStart) || bookingTime.isAfter(businessHoursEnd)) {
+      return res.status(400).json({
+        success: false,
+        message: `The selected time is outside lab test hours (${physiotherapyBooking.start} - ${physiotherapyBooking.end}). Please select a time within operating hours.`,
+        code: 'OUTSIDE_HOURS'
+      });
+    }
+
+    // Check if selected time is in disabled time slots
+    const isDisabledTime = physiotherapyBooking.disabledTimeSlots.some(slot => {
+      if (slot.type === 'single' && slot.time === selectedTime) {
+        return true;
+      }
+
+      if (slot.type === 'range') {
+        const rangeStart = dayjs(`${selectedDate} ${slot.start}`, 'YYYY-MM-DD HH:mm');
+        const rangeEnd = dayjs(`${selectedDate} ${slot.end}`, 'YYYY-MM-DD HH:mm');
+        return bookingTime.isAfter(rangeStart) && bookingTime.isBefore(rangeEnd) ||
+          bookingTime.isSame(rangeStart) ||
+          bookingTime.isSame(rangeEnd);
+      }
+
+      return false;
+    });
+
+    if (isDisabledTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'This time slot is not available for booking. Please select another time.',
+        code: 'DISABLED_TIME_SLOT'
+      });
+    }
+
+    // Validate time slot based on gap between and ensure it aligns with the gapBetween setting
+    const minutesFromStart = bookingTime.diff(businessHoursStart, 'minute');
+    if (minutesFromStart % physiotherapyBooking.gapBetween !== 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Please select a valid time slot. Appointments are scheduled every ${physiotherapyBooking.gapBetween} minutes.`,
+        code: 'INVALID_TIME_SLOT'
+      });
+    }
+
+    // Find existing bookings for the selected time slot
+    let existingBookings = await BookingPhysioModel.find({
+      date: selectedDate,  // Changed from selectedDate to match schema
+      time: selectedTime,  // Changed from selectedTime to match schema
+      status: { $nin: ['Cancelled', 'Rescheduled', 'Pending'] }
+    });
+
+    // Check if time slot is fully booked
+    if (existingBookings.length >= physiotherapyBooking.perGapLimitBooking) {
+      return res.status(400).json({
+        success: false,
+        message: `This time slot is fully booked. Please select another time.`,
+        code: 'SLOT_FULL'
+      });
+    }
+
+    const bookingRef = `PHYSIO-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // Create Razorpay payment order with proper amount formatting
+    try {
+      const paymentData = {
+        amount: Math.round(totalPayableAmount) * 100, // Convert to paise
+        currency: 'INR',
+        receipt: bookingRef,
+        notes: {
+          bookingType,
+          userId: user,
+          physio: physio,
+          petName: petExisting.name || 'Pet'
+        }
+      };
+
+      const paymentResult = await razorpayUtils.createPayment(paymentData);
+
+      if (!paymentResult.success) {
+        console.error('Payment creation failed:', paymentResult.error);
+        return res.status(500).json({
+          success: false,
+          message: 'Unable to initialize payment. Please try again later.',
+          code: 'PAYMENT_INIT_FAILED'
+        });
+      }
+
+      // Save payment record
+      const saveInPayment = await PaymentSchema.create({
+        forWhat: 'physiothereapy',
+        petid: user,
+        razorpay_order_id: paymentResult?.order?.id,
+        amount: paymentResult?.order?.amount,
+        status: paymentResult?.order?.status
+      });
+
+      // Create booking record with the correct field names
+      const newBooking = await BookingPhysioModel.create({
+        physio: physio,
+        date: selectedDate,      
+        time: selectedTime,     
+        couponCode,
+        couponDiscount,
+        totalPayableAmount,
+        pet: user,
+        bookingRef,
+        paymentDetails: saveInPayment._id,  
+        status: 'Pending',
+        fcmToken,
+        bookingType
+      });
+
+      // Successful response
+      return res.status(201).json({
+        success: true,
+        message: 'Your physiotherapy appointment has been booked successfully!', // Updated message
+        data: {
+          booking: newBooking,
+          payment: {
+            orderId: paymentResult.order.id,
+            amount: totalPayableAmount,
+            key: paymentResult.key,
+            bookingId: newBooking._id
+          }
+        }
+      });
+
+    } catch (paymentError) {
+      console.error('Payment processing error:', paymentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Payment processing failed. Please try again or contact support.',
+        code: 'PAYMENT_PROCESSING_ERROR'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in MakeABookingForPhysio:', error);  // Updated error log message
+
+    // Check for specific error types
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please check your input and try again.',
+        errors: Object.values(error.errors).map(err => err.message),
+        code: 'VALIDATION_ERROR'
+      });
+    }
+
+    if (error.name === 'MongoError' && error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'This appointment has already been booked. Please try with different details.',
+        code: 'DUPLICATE_BOOKING'
+      });
+    }
+
+    // Default error response
+    return res.status(500).json({
+      success: false,
+      message: 'Something went wrong while booking your appointment. Please try again later.',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
 
 
 
@@ -478,7 +1061,12 @@ exports.verifyPayment = async (req, res) => {
       case 'vaccine':
         booking = await handleVaccineBooking(bookingId, razorpay_payment_id, booking?.fcmToken);
         break;
-
+      case 'labtest':
+        booking = await handlelabTestBooking(bookingId, razorpay_payment_id, booking?.fcmToken);
+        break;
+      case 'physiotherapy':
+        booking = await handlePhysioBooking(bookingId, razorpay_payment_id, booking?.fcmToken);
+        break;
       default:
         console.warn('[Payment] Unknown booking type:', type);
         return res.status(400).json({
@@ -561,6 +1149,76 @@ async function handleConsultationBooking(bookingId, paymentId, fcm) {
   return booking;
 }
 
+
+async function handlePhysioBooking(bookingId, paymentId, fcm) {
+  try {
+  
+    const booking = await BookingPhysioModel.findById(bookingId)
+      .populate('paymentDetails physio pet');
+    
+    if (!booking) {
+      throw new Error('Physiotherapy booking not found');
+    }
+
+    // Update booking status
+    booking.status = 'Confirmed';
+    booking.paymentComplete = true;
+    booking.updatedAt = new Date();
+    
+    // Update payment details if available
+    if (booking.paymentDetails) {
+      booking.paymentDetails.razorpay_payment_id = paymentId;
+      booking.paymentDetails.payment_status = "paid";
+      await booking.paymentDetails.save();
+    }
+    
+    // Save the updated booking
+    await booking.save();
+    
+    // Prepare data for email notification
+    const petName = booking.pet?.petname || 'your pet';
+    const physioService = booking.physio?.title || 'physiotherapy session';
+    const appointmentDate = booking.date ? new Date(booking.date).toLocaleDateString() : 'scheduled date';
+    const appointmentTime = booking.time || 'scheduled time';
+    
+    const emailData = {
+      PhysioType: physioService,
+      date: appointmentDate,
+      petname: petName,
+      bookingId: booking.bookingRef,
+      Payment: booking.paymentDetails?.amount / 100, // Convert from paise to rupees
+      time: appointmentTime,
+      whenBookingDone: booking.createdAt,
+      ownerNumber: booking.pet?.petOwnertNumber
+    };
+    
+    // Send confirmation email
+    await sendCustomePhysioEmail({ data: emailData });
+    
+    // Send push notification if FCM token is available
+    if (booking?.fcmToken) {
+      const title = '🐾 Physiotherapy Appointment Confirmed';
+      const body = `Great news! Your ${physioService} appointment for ${petName} on ${appointmentDate} at ${appointmentTime} has been confirmed. We look forward to helping your pet feel better!`;
+      await safeSendNotification(booking?.fcmToken, title, body);
+    }
+    
+    // Prepare and send SMS notification
+    const smsContent = {
+      name: petName,
+      Date: appointmentDate,
+      service: physioService,
+      BookingId: booking.bookingRef,
+      number: '91 9811299059' 
+    };
+    
+    await sendPhysioComplete(booking.pet?.petOwnertNumber, smsContent);
+    
+    return booking;
+  } catch (error) {
+    console.error('Error in handlePhysioBooking:', error);
+    throw error; // Re-throw to let the caller handle it
+  }
+}
 async function handleVaccineBooking(bookingId, paymentId, fcm) {
 
   const booking = await VaccinationBooking.findById(bookingId)
@@ -601,6 +1259,46 @@ async function handleVaccineBooking(bookingId, paymentId, fcm) {
 
   return booking;
 }
+async function handlelabTestBooking(bookingId, paymentId, fcm) {
+
+  const booking = await LabTestBooking.findById(bookingId)
+    .populate('payment labTests clinic pet');
+
+  if (!booking) throw new Error('Vaccine booking not found');
+
+  booking.status = 'Confirmed';
+  booking.paymentComplete = true;
+  booking.updatedAt = new Date();
+
+  if (booking.payment) {
+    booking.payment.razorpay_payment_id = paymentId;
+    booking.payment.payment_status = "paid";
+    await booking.payment.save();
+  }
+
+  await booking.save();
+
+  // const emailData = {
+  //   consulationtype: booking.vaccine?.title,
+  //   date: new Date(booking.selectedDate).toLocaleDateString('en-us'),
+  //   petname: booking.pet?.petname,
+  //   bookingId: booking.bookingRef,
+  //   Payment: booking.payment?.amount,
+  //   time: booking.selectedTime,
+  //   whenBookingDone: booking.createdAt,
+  //   ownerNumber: booking.pet?.petOwnertNumber
+  // };
+
+  // await sendCustomeConulationEmail({ data: emailData });
+
+  if (booking?.fcmToken) {
+    const title = 'Booking Confirmed 🎉';
+    const body = `Your lab test appointment has been confirmed. Thank you for your purchase! For any issues, please check the Booking section.`;
+    await safeSendNotification(booking?.fcmToken, title, body);
+  }
+
+  return booking;
+}
 
 async function safeSendNotification(fcmToken, title, body) {
   try {
@@ -610,6 +1308,17 @@ async function safeSendNotification(fcmToken, title, body) {
     console.error('[FCM] Error sending notification:', error.message);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Webhook handler for Razorpay events
@@ -854,6 +1563,10 @@ exports.getBookingStatus = async (req, res) => {
       booking = await BookingConsultations.findById(bookingId).populate('paymentDetails');
     } else if (type === 'vaccine') {
       booking = await VaccinationBooking.findById(bookingId).populate('paymentDetails');
+    } else if (type === 'labtest') {
+      booking = await LabTestBooking.findById(bookingId).populate('paymentDetails');
+    } else if (type === 'physio') {
+      booking = await BookingPhysioModel.findById(bookingId).populate('paymentDetails');
     } else {
       return res.status(400).json({
         success: false,
@@ -883,4 +1596,23 @@ exports.getBookingStatus = async (req, res) => {
       error: error.message
     });
   }
+};
+
+
+
+
+
+const getIndiaDay = (selectedDate) => {
+  const date = new Date(selectedDate);
+
+  // Get UTC time in milliseconds
+  const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+
+  // IST is UTC+5:30 => 5.5 hours * 60 * 60 * 1000 = 19800000 ms
+  const istTime = new Date(utcTime + 19800000);
+
+  const dayIndex = istTime.getDay(); // 0 (Sunday) to 6 (Saturday)
+  const dayName = istTime.toLocaleDateString('en-IN', { weekday: 'long', timeZone: 'Asia/Kolkata' });
+
+  return { index: dayIndex, name: dayName };
 };

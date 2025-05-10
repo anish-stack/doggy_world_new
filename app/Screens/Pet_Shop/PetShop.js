@@ -1,286 +1,373 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  ScrollView,
-  Dimensions,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import axios from 'axios';
-import DynmaicSlider from '../Services/Bakery/Dynamic_Screen/DynamicSlider';
+import { View, Text, Dimensions, Linking, StatusBar, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useNavigation } from '@react-navigation/native';
+import useGetBannersHook from '../../hooks/GetBannersHook';
+import TopHeadPart from '../../layouts/TopHeadPart';
+import { ScrollView } from 'react-native';
+import ImageSlider from '../../layouts/ImageSlider';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import axios from 'axios'
+import { API_END_POINT_URL_LOCAL } from '../../constant/constant';
 import AllProducts from './AllProducts';
-import { MaterialIcons } from '@expo/vector-icons';
-import Animated, { FadeIn, Layout } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
-
-const LoadingPlaceholder = () => (
-  <View style={styles.loadingContainer}>
-    <MaterialIcons name="pets" size={48} color="#B32113" />
-    <Text style={styles.loadingText}>Fetching pet supplies...</Text>
-  </View>
-);
-
-const ErrorView = ({ message, onRetry }) => (
-  <View style={styles.errorContainer}>
-    <MaterialIcons name="error-outline" size={48} color="#B32113" />
-    <Text style={styles.errorText}>{message}</Text>
-    <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-      <Text style={styles.retryText}>Try Again</Text>
-    </TouchableOpacity>
-  </View>
-);
+const PHONE_NUMBER = 'tel:9811299059';
+const BANNER_TYPE = 'shop';
 
 export default function PetShop() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
-  const [slider, setSlider] = useState([]);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const { fetchBanners, sliders } = useGetBannersHook();
 
-      const [petshopsRes, slidersRes] = await Promise.all([
-        axios.get('https://admindoggy.adsdigitalmedia.com/api/petshops?populate=*'),
-        axios.get('https://admindoggy.adsdigitalmedia.com/api/bakery-sliders?populate=*')
-      ]);
-
-      const fetchedData = petshopsRes.data.data;
-      const fetchSlider = slidersRes.data.data;
-
-      const filteredSliderData = fetchSlider.filter(
-        (item) => item.isPetShop?.Title === 'Pet Shop'
-      );
-
-      const filterFetchData = fetchedData.filter(
-        (item) => item.Title !== 'Pet Shop'
-      );
-
-      setSlider(filteredSliderData);
-      setData(filterFetchData);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Unable to load pet shop data. Please check your connection.');
-    } finally {
-      setLoading(false);
-    }
+  const handleCallPress = useCallback(() => {
+    Linking.openURL(PHONE_NUMBER);
   }, []);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  }, [fetchData]);
+  const handlePetShopCategories = useCallback(() => {
+    const Categories = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/petshop-category`);
+        if (response.data.success) {
+          // Filter active categories and sort by position
+          const filteredData = response.data.data
+            .filter(item => item.active)
+            .sort((a, b) => a.position - b.position);
+          setData(filteredData);
+        }
+      } catch (error) {
+        console.log(error);
+        setError('Failed to load categories');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    Categories();
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    handlePetShopCategories();
+    fetchBanners(BANNER_TYPE);
+  }, [fetchBanners, handlePetShopCategories]);
 
-  const sliderImages = useMemo(() => {
-    const images = slider.flatMap((item) => item.images).map((image) => image.url);
-    return [{ id: 1, src: images }];
-  }, [slider]);
+  const navigateToScreen = (item) => {
+    navigation.navigate('Dynamic_Shop', {
+      id: item._id,
+      title: item.title
+    });
+  };
 
-  const sortedData = useMemo(() => {
-    return [...data].sort((a, b) => a.postion - b.postion);
-  }, [data]);
+  const renderCategoryCard = (item, index) => {
+    // Alternate layout for even/odd items
+    const isEven = index % 2 === 0;
 
-  const renderCategory = useCallback(({ item, index }) => (
-    <Animated.View
-      entering={FadeIn.delay(index * 100)}
-      layout={Layout.springify()}
-      key={item.id}
-    >
+    return (
       <TouchableOpacity
-        style={styles.categoryCard}
+        key={item._id}
+        style={[
+          styles.categoryCard,
+          { backgroundColor: item.backgroundColour || '#f0f0f0' }
+        ]}
+        onPress={() => navigateToScreen(item)}
         activeOpacity={0.8}
-        onPress={() =>
-          navigation.navigate('Dynamic_Shop', {
-            id: item.documentId,
-            title: item.Title
-          })
-        }
       >
-        <Image
-          source={{ uri: item?.Image?.url }}
-          style={styles.categoryImage}
-        />
         <View style={styles.categoryContent}>
-          <Text style={styles.categoryTitle}>{item.Title}</Text>
-          <MaterialIcons name="arrow-forward-ios" size={16} color="#FFF" />
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  ), [navigation]);
+          <View style={styles.categoryTextContainer}>
+            <Text style={styles.categoryTitle}>{item.title}</Text>
+            <View style={styles.shopNowButton}>
+              <Text style={styles.shopNowText}>Shop Now</Text>
+              <MaterialIcons name="arrow-forward-ios" size={14} color="#fff" />
+            </View>
+          </View>
 
-  if (loading && !refreshing) {
-    return <LoadingPlaceholder />;
-  }
-
-  if (error) {
-    return <ErrorView message={error} onRetry={fetchData} />;
-  }
-
-  return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={styles.sliderContainer}>
-        <DynmaicSlider
-          navigationShow={true}
-          heightPass={160}
-          mode={'cover'}
-          autoPlay={true}
-          Dealy={3000}
-          isUri={true}
-          imagesByProp={sliderImages}
-        />
-      </View>
-
-      <View style={styles.sectionContainer}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons name="pets" size={24} color="#B32113" />
-          <Text style={styles.sectionTitle}>
-            Shop By <Text style={styles.highlight}>Categories</Text>
-          </Text>
-        </View>
-
-        <View style={styles.categoriesGrid}>
-          {sortedData.length > 0 ? (
-            sortedData.map((item, index) => renderCategory({ item, index }))
+          {item.imageUrl && item.imageUrl.url ? (
+           <View style={{height:120}}>
+             <Image
+              source={{ uri: item.imageUrl.url }}
+              style={styles.categoryImage}
+              resizeMode="cover"
+            />
+            </View>
           ) : (
-            <Text style={styles.emptyText}>No categories available</Text>
+            <View style={styles.placeholderImage}>
+              <FontAwesome5 name="paw" size={40} color="#fff" />
+            </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
+    );
+  };
 
-      <View style={styles.sectionContainer}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons name="shopping-basket" size={24} color="#B32113" />
-          <Text style={styles.sectionTitle}>
-            Featured <Text style={styles.highlight}>Bakery Products</Text>
-          </Text>
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <TopHeadPart title="Furry Friends Hub" fnc={handleCallPress} />
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Banner Slider */}
+        <View style={styles.bannerContainer}>
+          <ImageSlider images={sliders} height={170} />
         </View>
-        <AllProducts />
-      </View>
-    </ScrollView>
+
+        {/* Categories Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Shop by Category</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF6B6B" />
+              <Text style={styles.loadingText}>Loading categories...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error-outline" size={40} color="#FF6B6B" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={handlePetShopCategories}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : data.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <FontAwesome5 name="box-open" size={40} color="#ccc" />
+              <Text style={styles.emptyText}>No categories available</Text>
+            </View>
+          ) : (
+            <View style={styles.categoriesContainer}>
+              {data.map((item, index) => renderCategoryCard(item, index))}
+            </View>
+          )}
+        </View>
+
+
+
+
+        {/* Special Offers */}
+        <View style={styles.specialOffersContainer}>
+          <LinearGradient
+            colors={['#FF6B6B', '#FF8E53']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.specialOfferCard}
+          >
+            <View style={styles.specialOfferContent}>
+              <View>
+                <Text style={styles.specialOfferTitle}>Special Offer</Text>
+                <Text style={styles.specialOfferDesc}>Get 20% off on all dog food</Text>
+                <TouchableOpacity style={styles.specialOfferButton}>
+                  <Text style={styles.specialOfferButtonText}>Shop Now</Text>
+                </TouchableOpacity>
+              </View>
+              <Image
+                source={{ uri: 'https://res.cloudinary.com/do34gd7bu/image/upload/v1746015177/uploads/coelsnbh50mg3cdzpt6n.png' }}
+                style={styles.specialOfferImage}
+                resizeMode="contain"
+              />
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Bottom Spacing */}
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#fff',
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#F8F9FA',
-  },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#B32113',
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sliderContainer: {
-    marginBottom: 20,
+  bannerContainer: {
+    marginBottom: 15,
   },
   sectionContainer: {
-    marginBottom: 50,
+    marginBottom: 20,
+    paddingHorizontal: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginLeft: 8,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  highlight: {
-    color: '#B32113',
+  viewAllButton: {
+    padding: 5,
   },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 12,
+  viewAllText: {
+    color: '#FF6B6B',
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 14,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  errorText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 14,
+  },
+  categoriesContainer: {
+    marginBottom: 10,
   },
   categoryCard: {
-    width: (width - 48) / 3,
-    backgroundColor: '#B32113',
     borderRadius: 12,
-    overflow: 'hidden',
+    marginBottom: 15,
+    padding: 15,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-  },
-  categoryImage: {
-    width: '100%',
-    height: 100,
-    resizeMode: 'cover',
+    overflow: 'hidden',
   },
   categoryContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 8,
+    alignItems: 'center',
+  },
+  categoryTextContainer: {
+    flex: 1,
+    marginRight: 10,
   },
   categoryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-    flex: 1,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
-  emptyText: {
-    textAlign: 'center',
-    color: '#64748B',
+  shopNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  shopNowText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginRight: 5,
+  },
+  categoryImage: {
+    width: 100,
+    height: "100%",
+    position: 'relative',
+    bottom: -15,
+    objectFit: 'cover'
+  },
+  placeholderImage: {
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featuredContainer: {
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  specialOffersContainer: {
+    paddingHorizontal: 15,
+    marginBottom: 20,
+  },
+  specialOfferCard: {
+    borderRadius: 12,
+    padding: 15,
+    overflow: 'hidden',
+  },
+  specialOfferContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  specialOfferTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5,
+  },
+  specialOfferDesc: {
     fontSize: 16,
-    padding: 20,
-    width: '100%',
+    color: '#fff',
+    marginBottom: 15,
+    opacity: 0.9,
+  },
+  specialOfferButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  specialOfferButtonText: {
+    color: '#FF6B6B',
+    fontWeight: 'bold',
+  },
+  specialOfferImage: {
+    width: 120,
+    height: 120,
+  },
+  bottomSpacing: {
+    height: 20,
   },
 });

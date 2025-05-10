@@ -291,6 +291,44 @@ exports.getPetShopProductById = async (req, res) => {
     }
 };
 
+exports.getPetShopProductByCategoryId = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category ID is required'
+            });
+        }
+
+        const products = await petShopProduct.find({ category: id })
+            .populate('category', 'name tag');
+
+        if (!products || products.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No pet shop products found for this category'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Pet shop products fetched successfully',
+            data: products
+        });
+
+    } catch (error) {
+        console.error('Error fetching pet shop products:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch pet shop products',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+
 
 exports.updatePetShopProduct = async (req, res) => {
     let publicIds = [];
@@ -355,7 +393,7 @@ exports.updatePetShopProduct = async (req, res) => {
             // Proceed only if there are images to remove
             if (publicIdsToRemove.length > 0) {
                 // Delete images from cloud storage
-                await deleteMultipleFilesCloud(publicIdsToRemove);
+                // await deleteMultipleFilesCloud(publicIdsToRemove);
 
                 // Filter out the removed images from the product's imageUrl array
                 product.imageUrl = product.imageUrl.filter(img =>

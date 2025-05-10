@@ -83,21 +83,7 @@ export default function PaymentInfos({ cartItems, offer }) {
 
     return (
         <View style={styles.container}>
-            <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <MaterialIcons name="delivery-dining" size={24} color="#0F172A" />
-                    <Text style={styles.sectionTitle}>Delivery Instructions</Text>
-                </View>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Add special instructions for delivery (optional)"
-                    placeholderTextColor="#94A3B8"
-                    multiline
-                    numberOfLines={2}
-                    value={instructions}
-                    onChangeText={setInstructions}
-                />
-            </View>
+
 
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>

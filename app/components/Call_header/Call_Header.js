@@ -5,7 +5,7 @@ const { width } = Dimensions.get('window');
 
 export default function Call_Header() {
     const handleCallPress = () => {
-        const phoneNumber = 'tel:7217619794';
+        const phoneNumber = 'tel:9811299059';
         Linking.openURL(phoneNumber);
     };
     return (

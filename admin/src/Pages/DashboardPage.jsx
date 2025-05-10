@@ -22,7 +22,8 @@ import {
   Dog,
   Cat,
   ShoppingCart,
-  AlertCircle
+  AlertCircle,
+  Microscope
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,12 @@ import AllGroomingPackage from "@/screens/Grooming/AllGroomingPackage"
 import AllConsultation from "@/screens/consultation/All_consultation"
 import AllConultationDoctor from "@/screens/consultation/AllConultationDoctor"
 import NotLoggedIn from "./NotLoggedIn"
+import AllCollectionLabTest from "@/screens/LabTest/LabCats/AllCollectionLabTest"
+import LabTestAll from "@/screens/LabTest/LabTestProducts/LabTestAll"
+import CreateLabTest from "@/screens/LabTest/LabTestProducts/CreateLabTest"
+import EditLabtest from "@/screens/LabTest/LabTestProducts/EditLabtest"
+import Settings from "@/screens/settings/Settings"
+import AllLabOrders from "@/Orders/LabOrders/AllLabOrders"
 
 
 const DashboardPage = () => {
@@ -175,7 +182,7 @@ const DashboardPage = () => {
     if (!user) return false
     if (user.role === 'admin') return true
 
-    return roleAccess.clinic.allowedSections.includes(sectionTitle)
+    return roleAccess?.clinic?.allowedSections?.includes(sectionTitle)
   }
 
   const menuSections = [
@@ -254,6 +261,7 @@ const DashboardPage = () => {
         { to: "/dashboard/pet-bakery-products", label: "Bakery Products" },
       ],
     },
+
     {
       title: "Consultations",
       icon: <Stethoscope className="h-5 w-5" />,
@@ -276,6 +284,15 @@ const DashboardPage = () => {
       singleItem: true,
       to: "/dashboard/physiotherapy",
       label: "Physiotherapy",
+    },
+    {
+      title: "Lab Test",
+      icon: <Microscope className="h-5 w-5" />,
+      items: [
+        { to: "/dashboard/labt-test-type", label: "Lab Test Type" },
+        { to: "/dashboard/all-labtest", label: "All LabTest" },
+
+      ],
     },
     {
       title: "Vaccination",
@@ -411,7 +428,7 @@ const DashboardPage = () => {
   }
 
   if (!user) {
-    return <NotLoggedIn/>
+    return <NotLoggedIn />
   }
 
   return (
@@ -452,7 +469,7 @@ const DashboardPage = () => {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                   <LogOut className="h-4 w-4 mr-2" />
@@ -585,6 +602,21 @@ const DashboardPage = () => {
             {/* Consultation */}
             <Route path="/all-consultations" element={hasAccess("/dashboard/all-consultations") ? <AllConsultation /> : <AccessDenied />} />
             <Route path="/consultations-doctors" element={hasAccess("/dashboard/consultations-doctors") ? <AllConultationDoctor /> : <AccessDenied />} />
+
+            {/* Lab test */}
+
+            <Route path="/labt-test-type" element={hasAccess("/dashboard/labt-test-type") ? <AllCollectionLabTest /> : <AccessDenied />} />
+            <Route path="/all-labtest" element={hasAccess("/dashboard/all-labtest") ? <LabTestAll /> : <AccessDenied />} />
+            <Route path="/create-labtest-product" element={hasAccess("/dashboard/create-labtest-product") ? <CreateLabTest /> : <AccessDenied />} />
+            <Route path="/edit-labtest-product/:id" element={hasAccess("/dashboard/edit-labtest-product/:id") ? <EditLabtest /> : <AccessDenied />} />
+
+            {/* Settings */}
+            <Route path="/settings" element={hasAccess("/dashboard/settings") ? <Settings /> : <AccessDenied />} />
+
+
+
+            {/* Lab Orders */}
+            <Route path="/lab-test-booking" element={hasAccess("/dashboard/lab-test-booking") ? <AllLabOrders /> : <AccessDenied />} />
 
 
             {/* Redirect unknown paths to dashboard home */}
