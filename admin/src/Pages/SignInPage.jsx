@@ -19,7 +19,7 @@ const SignInPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, clearError ,error} = useContext(AuthContext);
+  const { login, clearError, error } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -29,15 +29,15 @@ const SignInPage = () => {
     try {
       const cred = { email, password }
       await login(cred);
-if(error){
-  toast.error(error);
+      if (error) {
+        toast.error(error);
 
-}else{
+      } else {
 
-  toast.success("Signed in successfully!");
-  navigate("/dashboard");
-  clearError()
-}
+        toast.success("Signed in successfully!");
+        navigate("/dashboard");
+        clearError()
+      }
     } catch (error) {
       toast.error(error.message || "Failed to sign in. Please try again.");
     } finally {

@@ -90,19 +90,19 @@ exports.updateCakeDesign = async (req, res) => {
     try {
         const { name, is_active, position, whichFlavoredCake } = req.body;
         const file = req.file;
-        console.log(req.body)
+        console.log(file)
 
         const design = await CakeDesign.findById(req.params.id);
         if (!design) return res.status(404).json({ message: "Design not found" });
 
         if (file) {
             if (design.image?.public_id) {
-                await deleteFileCloud(design.image.public_id);
+                await deleteFileCloud(design.image.publicId);
             }
-            const uploaded = await uploadSingleFile(file.path);
+            const uploaded = await uploadSingleFile(file);
             design.image = {
-                public_id: uploaded.public_id,
-                url: uploaded.secure_url
+                publicId: uploaded.public_id,
+                url: uploaded.url
             };
         }
 
@@ -110,7 +110,7 @@ exports.updateCakeDesign = async (req, res) => {
         design.is_active = is_active;
         design.position = position || design.position;
         design.whichFlavoredCake = whichFlavoredCake || design.whichFlavoredCake;
-
+        console.log("design",design)
         await design.save();
 
         const redis = req.app.get('redis');

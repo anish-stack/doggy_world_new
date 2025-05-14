@@ -49,6 +49,7 @@
     "react": "18.3.1",
     "react-native": "0.76.3",
     "react-native-calendar-picker": "^8.0.5",
+    "react-native-flash-message": "^0.4.2",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "^2.20.2",
     "react-native-ionicons": "^4.6.5",
@@ -71,7 +72,9 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "@types/react": "~18.3.12",
+    "typescript": "^5.3.3"
   },
   "private": true
 }

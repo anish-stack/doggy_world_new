@@ -153,8 +153,8 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
     const transporter = createTransporter();
 
     let mailOptions
-  
-    if(whichDoctor){
+
+    if (whichDoctor) {
       mailOptions = {
         from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
         to: "anishjha896@gmail.com", // Admin email
@@ -184,7 +184,7 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
           </div>
         `,
       };
-    }else{
+    } else {
       mailOptions = {
         from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
         to: "anishjha896@gmail.com", // Admin email
@@ -215,7 +215,7 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
         `,
       };
     }
- 
+
 
     const info = await transporter.sendMail(mailOptions);
     console.log("📧 Admin booking email sent:", info.messageId);
@@ -226,6 +226,10 @@ exports.sendCustomeConulationEmail = async ({ data }) => {
     throw new Error("Failed to send admin consultation email");
   }
 };
+
+
+
+
 exports.sendCustomePhysioEmail = async ({ data }) => {
   const {
     PhysioType,
@@ -277,5 +281,52 @@ exports.sendCustomePhysioEmail = async ({ data }) => {
   } catch (error) {
     console.error("❌ Error sending admin physiotherapy booking email:", error);
     throw new Error("Failed to send admin physiotherapy booking email");
+  }
+};
+
+
+
+
+
+
+
+
+exports.sendCustomRescheduleMessageEmail = async ({
+  bookingId,
+  date,
+  time,
+  doctor,
+  petName,
+  ownerContact,
+}) => {
+  try {
+    const transporter = createTransporter();
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <h2>📅 Booking Rescheduled</h2>
+        <p><strong>Booking ID:</strong> ${bookingId}</p>
+        <p><strong>New Date:</strong> ${date}</p>
+        <p><strong>New Time:</strong> ${time}</p>
+        <p><strong>Doctor:</strong> Dr. ${doctor}</p>
+        <p><strong>Pet Name:</strong> ${petName}</p>
+        <p><strong>Owner Contact:</strong> ${ownerContact}</p>
+        <p>Please take note of the updated schedule.</p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Doggy World Veterinary Hospital" <${process.env.EMAIL_FROM}>`,
+      to: "anishjha896@gmail.com",
+      subject: `📅 Booking Rescheduled – ID: ${bookingId}`,
+      html: htmlContent,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Reschedule email sent:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("❌ Error sending reschedule email:", error);
+    throw new Error("Failed to send reschedule email.");
   }
 };

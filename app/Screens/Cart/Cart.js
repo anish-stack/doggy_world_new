@@ -17,8 +17,9 @@ import { MaterialCommunityIcons, MaterialIcons, AntDesign, Ionicons } from "@exp
 import { useSelector, useDispatch } from "react-redux"
 import { useNavigation } from "@react-navigation/native"
 import axios from 'axios'
+import Razorpay from "react-native-razorpay"
 
-import { UpdateCartItem, RemoveCartItem } from '../../redux/slice/cartSlice';
+import { UpdateCartItem, RemoveCartItem ,AllItemRemove } from '../../redux/slice/cartSlice';
 import useUserAddress from "../../hooks/useUserAddress"
 import { useToken } from "../../hooks/useToken"
 import CartHeader from "../../components/CartHeader/CartHeader"
@@ -26,6 +27,7 @@ import AddressCard from "./AddressCard"
 import EmptyCart from "./EmptyCart"
 import useCoupons from "../../hooks/useCoupons"
 import { API_END_POINT_URL_LOCAL } from "../../constant/constant"
+import useNotificationPermission from "../../hooks/notification"
 
 const CartScreen = () => {
   // Sample cart items from the provided data
@@ -69,7 +71,7 @@ const CartScreen = () => {
     country: "IN",
   })
   const [loadingItems, setLoadingItems] = useState({})
-
+  const { fcmToken } = useNotificationPermission()
 
   const addresses = address?.length
     ? address
@@ -214,77 +216,142 @@ const CartScreen = () => {
     }
   }
 
-  const handleCheckout = useCallback(() => {
-    if (!isLoggedIn) {
-      navigation.navigate("Login", { redirectTo: "Cart" });
+const handleCheckout = useCallback(() => {
+  if (!isLoggedIn) {
+    navigation.navigate("Login", { redirectTo: "Cart" });
+    return;
+  }
+
+  if (selectedPaymentMethod === "cod") {
+    if (!isCodAvailable) {
+      Alert.alert("Error", "COD not available for some items");
       return;
     }
 
-    if (selectedPaymentMethod === "cod") {
-      if (!isCodAvailable) {
-        Alert.alert("Error", "COD not available for some items");
-        return;
-      }
-
-      if (!selectedAddress) {
-        Alert.alert("Error", "Please select or add a delivery address");
-        return;
-      }
+    if (!selectedAddress) {
+      Alert.alert("Error", "Please select or add a delivery address");
+      return;
     }
+  }
 
-    const dataForCart = {
-      items: cartItems,
-      paymentDetails: {
-        subtotal: cartTotals?.subtotal,
-        discount: cartTotals?.discount,
-        tax: cartTotals?.tax,
-        deliveryFee: cartTotals?.deliveryFee,
-        total: cartTotals?.total,
-        hasNonFreeDeliveryItems: cartTotals?.hasNonFreeDeliveryItems
-      },
-      couponCode: selectedCoupon || null,
-      paymentMethod: selectedPaymentMethod,
-      addressId: selectedAddress?._id,
-      cartTotal: cartTotals?.total
-    };
+  const bookingData = {
+    items: cartItems,
+    paymentDetails: {
+      subtotal: cartTotals?.subtotal,
+      discount: cartTotals?.discount,
+      tax: cartTotals?.tax,
+      deliveryFee: cartTotals?.deliveryFee,
+      total: cartTotals?.total,
+      hasNonFreeDeliveryItems: cartTotals?.hasNonFreeDeliveryItems,
+    },
+    fcm: fcmToken,
+    couponCode: selectedCoupon || null,
+    paymentMethod: selectedPaymentMethod,
+    addressId: selectedAddress?._id,
+    cartTotal: cartTotals?.total,
+  };
 
-    const makeBooking = async () => {
-      try {
-        const response = await axios.post(
-          `${API_END_POINT_URL_LOCAL}/api/v1/booking-for-shop`,
-          dataForCart,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
-        if (response.data?.success) {
-          Alert.alert("Success", "Your order has been placed successfully!");
-          // navigation.navigate("Orders"); // or redirect to thank you page
-        } else {
-          Alert.alert("Error", "Failed to place the order. Please try again.");
+  const makeBooking = async () => {
+    try {
+      const response = await axios.post(
+        `${API_END_POINT_URL_LOCAL}/api/v1/booking-for-shop`,
+        bookingData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      } catch (error) {
-        console.error("Checkout Error:", error);
-        Alert.alert("Error", "Something went wrong during checkout.");
+      );
+
+      if (!response.data?.success) {
+        Alert.alert("Error", "Failed to place the order. Please try again.");
+        return;
       }
-    };
 
-    makeBooking();
+      const { razorpayKey, razorpayOrderId, amount, user, bookingId } = response.data.data;
 
-  }, [
-    isLoggedIn,
-    selectedPaymentMethod,
-    isCodAvailable,
-    selectedAddress,
-    navigation,
-    cartItems,
-    cartTotals,
-    selectedCoupon,
-    token
-  ]);
+      const options = {
+        description: "Lab Test Booking",
+        image: "https://i.ibb.co/JjDVTCcG/877c8e22-4df0-4f07-a857-e544208dc0f2.jpg",
+        currency: "INR",
+        key: razorpayKey,
+        amount: Number(amount) * 100,
+        name: "Doggy World Care",
+        order_id: razorpayOrderId,
+        prefill: {
+          contact: user?.petOwnertNumber || "",
+          name: user?.petname || "",
+        },
+        theme: { color: "#ff4d4d" },
+      };
+
+      Razorpay.open(options)
+        .then(async (paymentData) => {
+          try {
+            const verifyRes = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/booking-verify-payment`, {
+              razorpay_payment_id: paymentData.razorpay_payment_id,
+              razorpay_order_id: paymentData.razorpay_order_id,
+              razorpay_signature: paymentData.razorpay_signature,
+              bookingId: bookingId,
+              type: "petShopAndBakery",
+              fcm: fcmToken || null,
+            });
+
+            if (verifyRes.data.success) {
+              Alert.alert("Booking Confirmed!", "Your appointment has been booked successfully.", [
+                {
+                  text: "OK",
+                  onPress: () => {
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: "Orderthankyou", params: { booking:bookingId } }],
+                    });
+                  },
+                },
+              ]);
+              // dispatch(AllItemRemove())
+            } else {
+              Alert.alert("Payment Verification Failed", "Please contact support with your payment ID.");
+            }
+          } catch (verifyError) {
+            console.error("Verification Error:", verifyError);
+            Alert.alert("Verification Issue", "Your payment was processed, but we could not verify it. Please contact support.");
+          }
+        })
+        .catch((error) => {
+          console.log("Payment Error:", error);
+        
+
+          if (error.code === "PAYMENT_CANCELLED") {
+            Alert.alert("Booking Cancelled", "You cancelled the payment process.");
+          } else {
+            Alert.alert("Payment Failed", "Unable to process payment. Please try again.");
+          }
+        });
+
+    } catch (error) {
+      console.error("Checkout Error:", error);
+      Alert.alert("Error", error?.response?.data?.message || "Something went wrong during checkout.");
+    }
+  };
+
+  makeBooking();
+
+}, [
+  isLoggedIn,
+  selectedPaymentMethod,
+  isCodAvailable,
+  selectedAddress,
+  navigation,
+  cartItems,
+  cartTotals,
+  selectedCoupon,
+  token,
+  fcmToken,
+]);
+
+
+
 
   // Render empty cart
   if (!cartItems?.length) {
@@ -446,37 +513,36 @@ const CartScreen = () => {
         {/* Payment Method Selection */}
 
 
-        {/* Address Section - Only show if COD is selected */}
-        {selectedPaymentMethod === "cod" && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Delivery Address</Text>
-              <TouchableOpacity style={styles.addButton} onPress={() => setShowAddressModal(true)}>
-                <Text style={styles.addButtonText}>+ Add New</Text>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity style={styles.addButton} onPress={() => setShowAddressModal(true)}>
+              <Text style={styles.addButtonText}>+ Add New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {addresses?.length > 0 ? (
+            <View style={styles.addressList}>
+              {addresses.map((addr) => (
+                <AddressCard
+                  key={addr._id}
+                  address={addr}
+                  selected={selectedAddress?._id === addr._id}
+                  onSelect={() => setSelectedAddress(addr)}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noAddressContainer}>
+              <Text style={styles.noAddressText}>No addresses found</Text>
+              <TouchableOpacity style={styles.addAddressButton} onPress={() => setShowAddressModal(true)}>
+                <Text style={styles.addAddressButtonText}>Add New Address</Text>
               </TouchableOpacity>
             </View>
+          )}
+        </View>
 
-            {addresses?.length > 0 ? (
-              <View style={styles.addressList}>
-                {addresses.map((addr) => (
-                  <AddressCard
-                    key={addr._id}
-                    address={addr}
-                    selected={selectedAddress?._id === addr._id}
-                    onSelect={() => setSelectedAddress(addr)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.noAddressContainer}>
-                <Text style={styles.noAddressText}>No addresses found</Text>
-                <TouchableOpacity style={styles.addAddressButton} onPress={() => setShowAddressModal(true)}>
-                  <Text style={styles.addAddressButtonText}>Add New Address</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Price Details */}
         <View style={[styles.section]}>
@@ -491,6 +557,8 @@ const CartScreen = () => {
             <Text style={styles.priceLabel}>GST (18%)</Text>
             <Text style={styles.priceValue}>₹{cartTotals.tax.toFixed(2)}</Text>
           </View>
+
+          
           {cartTotals.discount > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Discount</Text>

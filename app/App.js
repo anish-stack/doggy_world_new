@@ -1,4 +1,4 @@
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, StatusBar } from "react-native";
 import * as Sentry from "@sentry/react-native";
 import './context/firebaseConfig';
 import { NavigationContainer } from "@react-navigation/native";
@@ -12,7 +12,6 @@ import { name as appName } from "./app.json";
 import * as SplashScreen from "expo-splash-screen";
 import LottieView from "lottie-react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import axios from "axios";
 import { API_END_POINT_URL_LOCAL } from "./constant/constant";
 
@@ -63,7 +62,7 @@ import SingleBlog from "./components/Blogs/SingleBlog";
 import Order_Confirmation from "./Screens/Services/Bakery/Categories/Order_Confirmation";
 import Orderconfirm from "./Screens/Cart/Orderconfirm";
 import Profile from "./Profile_Screens/Profile/Profile";
-import Appointments from "./Profile_Screens/Appointments/Appointments";
+
 import Grooming_Sessions from "./Profile_Screens/Grooming_Sessions/Grooming_Sessions";
 import Cakes_order from "./Profile_Screens/Cakes_order/Cakes_order";
 import Lab from "./Profile_Screens/Orders/lab/Lab";
@@ -89,6 +88,10 @@ import LabTestsShow from "./Screens/NewLabs/LabTestsShow";
 import LabTestDetails from "./Screens/NewLabs/LabTestDetails";
 import BookingLabTests from "./Screens/NewLabs/instantBooking/BookingLabTests";
 import PhysioBooking from "./Screens/Physiotherapy/PhysioBooking";
+import Orderthankyou from "./Screens/Pet_Shop/_Shop/Orderthankyou";
+import CakeOrderThankyou from "./Screens/Services/Bakery/Categories/CakeOrderThankyou";
+import Appointments from "./NewProfileScreens/Appointments/Appointments";
+import ConsultationDetail from "./NewProfileScreens/Appointments/ConsultationDetail";
 
 // Prevent SplashScreen from hiding automatically
 SplashScreen.preventAutoHideAsync();
@@ -242,6 +245,7 @@ const App = () => {
   return (
     <NavigationContainer ref={navigationContainerRef}>
       <SafeAreaProvider>
+
         <Stack.Navigator>
           {/* Home Screen */}
           <Stack.Screen name="Home" component={Home} options={screenConfigs.noHeader} />
@@ -271,7 +275,7 @@ const App = () => {
           {/* Profile Screens authenticated */}
           <Stack.Screen name="Profile" component={Profile} options={{ ...screenConfigs.noHeader, title: "Profile" }} />
           <Stack.Screen name="Appointments" component={Appointments} options={{ ...screenConfigs.noHeader, title: "Appointments" }} />
-          <Stack.Screen name="AppointmentDetails" component={AppointmentDetails} options={{ ...screenConfigs.noHeader, title: "Appointments" }} />
+          <Stack.Screen name="ConsultationDetail" component={ConsultationDetail} options={{ ...screenConfigs.noHeader, title: "Appointments" }} />
           <Stack.Screen name="Groomings" component={Grooming_Sessions} options={{ ...screenConfigs.noHeader, title: "My Grooming Sessions" }} />
           <Stack.Screen name="cakeorder" component={Cakes_order} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
           <Stack.Screen name="physioBookings" component={Physio} options={{ ...screenConfigs.noHeader, title: "Cakes Order" }} />
@@ -287,6 +291,7 @@ const App = () => {
           <Stack.Screen name="Cake-Screen" component={CakesScreen} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
           <Stack.Screen name="Cake-Delivery" component={CakeDelivery} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
           <Stack.Screen name="Order_Confirmation" component={Order_Confirmation} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
+          <Stack.Screen name="CakeOrderThankyou" component={CakeOrderThankyou} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
           {/* dynamic_screen */}
           <Stack.Screen name="dynamic_screen" component={Dynamicscreen} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
@@ -297,9 +302,10 @@ const App = () => {
           <Stack.Screen name="Order-confirm" component={Orderconfirm} options={screenConfigs.noHeader} />
           <Stack.Screen name="Available_Offer" component={Offers} options={{ ...screenConfigs.noHeader, title: "AvailableOffer" }} />
           <Stack.Screen name="single-blog" component={SingleBlog} options={screenConfigs.noHeader} />
+          <Stack.Screen name="Orderthankyou" component={Orderthankyou} options={screenConfigs.noHeader} />
 
           {/* Pet Shop Screen */}
-          <Stack.Screen name="Pet_Shop" component={PetShop}options={{ ...screenConfigs.noHeader, title: "PetShop" }} />
+          <Stack.Screen name="Pet_Shop" component={PetShop} options={{ ...screenConfigs.noHeader, title: "PetShop" }} />
           <Stack.Screen name="Dynamic_Shop" component={Dynamic_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
           <Stack.Screen name="Dynamic_Products_Shop" component={Dynmaic_Products_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
           <Stack.Screen name="Dynamic_Details_Shop" component={Dynamic_Details_Shop} options={{ ...screenConfigs.noHeader, title: "Pet Shop" }} />
@@ -388,9 +394,7 @@ const RootApp = () => (
   <Provider store={store}>
     <SafeAreaProvider>
       <StatusBar
-        backgroundColor="transparent"
-        hidden={false}
-        translucent={false}
+        barStyle={'dark-content'}
       />
       <ErrorBoundaryWrapper>
         <App />

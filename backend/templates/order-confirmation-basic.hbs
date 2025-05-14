@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      background-color: #61a8dc;
+      color: white;
+      border-radius: 8px 8px 0 0;
+    }
+    .content {
+      padding: 30px 20px;
+      background-color: #ffffff;
+      border-left: 1px solid #e0e0e0;
+      border-right: 1px solid #e0e0e0;
+    }
+    .footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 12px;
+      background-color: #f9f9f9;
+      color: #666666;
+      border-radius: 0 0 8px 8px;
+      border: 1px solid #e0e0e0;
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #61a8dc;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Order Confirmation</h1>
+    </div>
+    
+    <div class="content">
+      <p>Dear Customer,</p>
+      
+      <p>Thank you for your order! We're delighted to confirm that your order has been received and is being processed.</p>
+      
+      <p><strong>Order Number:</strong> {{orderNumber}}</p>
+      
+      <p>You will receive a more detailed confirmation soon. If you have any questions about your order, please contact our customer service team.</p>
+      
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="https://petstore.com/orders/track/{{orderNumber}}" class="button">Track Order</a>
+      </p>
+      
+      <p>If you need immediate assistance, please contact us at {{supportPhone}}.</p>
+      
+      <p>Thank you for shopping with us!</p>
+      
+      <p>Best regards,<br>
+      Pet Store Team</p>
+    </div>
+    
+    <div class="footer">
+      <p>&copy; 2025 Pet Store. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

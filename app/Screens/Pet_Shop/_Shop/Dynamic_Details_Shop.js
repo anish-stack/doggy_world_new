@@ -149,10 +149,7 @@ export default function Dynamic_Details_Shop() {
 
 
 
-    const handleBookNow = useCallback(() => {
-        // Implement booking functionality
-        alert('Proceeding to checkout!')
-    }, [])
+
 
     const handleImageChange = useCallback((index) => {
         setCurrentImageIndex(index)

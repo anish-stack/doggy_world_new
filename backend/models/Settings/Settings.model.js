@@ -25,17 +25,17 @@ const bookingTimeSchema = new mongoose.Schema({
         {
             type: {
                 type: String,
-                enum: ['single', 'range'], 
+                enum: ['single', 'range'],
                 required: true
             },
             time: {
-                type: String 
+                type: String
             },
             start: {
                 type: String
             },
             end: {
-                type: String 
+                type: String
             }
         }
     ]
@@ -85,7 +85,25 @@ const SettingsSchema = new mongoose.Schema({
     version: {
         type: String,
         default: '1.0.0'
-    }
+    },
+    isTaxCollect: {
+        type: Boolean
+    },
+    taxPercetange: {
+        type: Number,
+
+    },
+    freeThressHoldeDeliveryFee: {
+        type: Number,
+    },
+    isFreeDeliveryOnAppAllProducts: {
+        type: Boolean
+    },
+    
+    base_delivery_fee: {
+        type: Number,
+    },
+
 
 }, {
     timestamps: true

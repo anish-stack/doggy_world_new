@@ -7,18 +7,18 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         ref: 'PetRegister',
         required: true
     },
-  
+
     orderNumber: {
         type: String,
         unique: true,
         required: true,
         default: () => 'ORD-' + Math.floor(100000 + Math.random() * 900000)
     },
-    
-  
+
+
     items: [
         {
-    
+
             hasVariant: {
                 type: Boolean,
                 default: false
@@ -26,19 +26,19 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
             variantId: {
                 type: mongoose.Schema.Types.ObjectId,
                 refPath: 'items.variantModel',
-                required: function() {
+                required: function () {
                     return this.hasVariant;
                 }
             },
             variantModel: {
                 type: String,
                 enum: ['petBakeryProduct.variants', 'PetShopProduct.variants'],
-                required: function() {
+                required: function () {
                     return this.hasVariant;
                 }
             },
             variantName: String,
-            
+
             // Product information
             itemId: {
                 type: mongoose.Schema.Types.ObjectId,
@@ -50,7 +50,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
                 enum: ['petBakeryProduct', 'PetShopProduct'],
                 required: true
             },
- 
+
             quantity: {
                 type: Number,
                 required: true,
@@ -66,15 +66,18 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
             }
         }
     ],
-    
+
     // Payment information
     paymentDetails: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Payment'
     },
+    fcmToken: {
+        type: String,
+    },
     paymentMethod: {
         type: String,
-        enum: ['Cash on Delivery', 'Online','Credit Card','online', 'Debit Card', 'UPI', 'Net Banking', 'Wallet'],
+        enum: ['Cash on Delivery', 'cod', 'Online', 'Credit Card', 'online', 'Debit Card', 'UPI', 'Net Banking', 'Wallet'],
         default: 'Cash on Delivery'
     },
 
@@ -87,7 +90,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    
+
     // Discount and coupon information
     couponApplied: {
         type: Boolean,
@@ -98,7 +101,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    
+
     // Price calculation fields
     subtotal: {
         type: Number,
@@ -116,7 +119,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    
+
     // Delivery information
     deliveryInfo: {
         type: mongoose.Schema.Types.ObjectId,
@@ -127,20 +130,20 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
-      
+
     specialInstructions: {
         type: String,
         trim: true,
         maxLength: 500
     },
-    
+
     // Order status
     status: {
         type: String,
         enum: ['Pending', 'Confirmed', 'Processing', 'Packed', 'Dispatched', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
         default: 'Pending'
     },
-    
+
     // Status history with timestamps for audit trail
     statusHistory: [
         {
@@ -154,18 +157,15 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
                 default: Date.now
             },
             note: String,
-           
+
         }
     ],
-    
+
     // Admin notes for internal use
     adminNotes: [
         {
             note: String,
-            addedBy: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Admin'
-            },
+
             timestamp: {
                 type: Date,
                 default: Date.now
@@ -183,7 +183,7 @@ BakeryAndShopBookingSchema.index({ status: 1 });
 BakeryAndShopBookingSchema.index({ createdAt: -1 });
 
 
-BakeryAndShopBookingSchema.pre('save', function(next) {
+BakeryAndShopBookingSchema.pre('save', function (next) {
     // If status has changed, add to status history
     if (this.isModified('status')) {
         this.statusHistory.push({
@@ -195,7 +195,7 @@ BakeryAndShopBookingSchema.pre('save', function(next) {
 });
 
 // Virtual field for order age
-BakeryAndShopBookingSchema.virtual('orderAge').get(function() {
+BakeryAndShopBookingSchema.virtual('orderAge').get(function () {
     return Math.floor((Date.now() - this.createdAt) / (1000 * 60 * 60 * 24));
 });
 

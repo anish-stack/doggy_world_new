@@ -1,131 +1,139 @@
-import { View, Text, Image, StyleSheet, ScrollView, ImageBackground } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, FlatList } from 'react-native';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
+import { API_END_POINT_URL_LOCAL } from '../../../../constant/constant';
+
+// Memoized item component for better performance
+const CategoryItem = memo(({ item, onPress }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={styles.itemContainer}
+  >
+    <Image
+      source={{ uri: item?.imageUrl?.url || 'https://www.royalpoochpetbakery.com/wp-content/uploads/2024/06/pizza.jpg' }}
+      style={styles.image}
+
+      fadeDuration={300}
+      defaultSource={require('./placeholder.png')}
+    />
+    <Text style={styles.title}>{item.title}</Text>
+  </TouchableOpacity>
+));
+
 export default function BakeryCategories() {
-    const [data, setData] = useState([])
-    const navigation = useNavigation()
-    const fetchData = async () => {
-        try {
-            const res = await axios.get(`https://admindoggy.adsdigitalmedia.com/api/pet-bakeries?populate=*`)
-            if (res.data) {
-                // console.log(res.data)
-                setData(res.data.data)
-            } else {
-                setData([])
-            }
-        } catch (error) {
-            console.log(error)
-        }
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/get-all-pet-bakery`, {
+        // Add timeout to prevent long loading times
+        timeout: 5000
+      });
+
+      if (res.data) {
+        const sort = res.data.data.sort((a, b) => a.position - b.position);
+        setData(sort);
+      } else {
+        setData([]);
+      }
+    } catch (error) {
+      console.log('Error fetching bakery data:', error);
+      // Handle error state if needed
+    } finally {
+      setLoading(false);
     }
-    useEffect(() => {
-        fetchData()
-    }, [])
+  }, []);
 
+  // Refetch data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
-    return (
-        <>
-
-            {/* <Text style={styles.text}>Items in Bakery</Text> */}
-
-
-            <View style={styles.container}>
-                {
-                    data
-
-                        .sort((a, b) => a.position - b.position)
-                        .map((item, index) => {
-                            return (
-                                <TouchableOpacity
-                                    onPress={() =>
-                                        navigation.navigate(
-                                            item.titile === 'Cakes' ? 'Cake-Screen' : 'dynamic_screen',
-                                            { title: item.titile }
-                                        )
-                                    }
-                                    key={item.id || index}
-                                    style={styles.itemContainer}
-                                >
-                                    <Image
-                                        source={{
-                                            uri: item?.image?.formats?.thumbnail?.url || 'https://www.royalpoochpetbakery.com/wp-content/uploads/2024/06/pizza.jpg',
-                                        }}
-                                        style={styles.image}
-                                    />
-                                    <Text style={styles.title}>{item.titile
-                                    }</Text>
-                                </TouchableOpacity>
-                            );
-                        })
-                }
-
-            </View>
-
-            {/* <View>
-                <Image source={{ uri: 'https://i.ibb.co/MMKYWCJ/op.jpg' }} resizeMode='contain' style={styles.images} />
-            </View> */}
-        </>
+  const handleItemPress = useCallback((title ,id) => {
+    navigation.navigate(
+      title === 'Cakes' ? 'Cake-Screen' : 'dynamic_screen',
+      { title: title, id: id }
     );
+  }, [navigation]);
+
+  const renderItem = useCallback(({ item }) => (
+    <CategoryItem
+      item={item}
+      onPress={() => handleItemPress(item.title, item._id)}
+    />
+  ), [handleItemPress]);
+
+  const keyExtractor = useCallback((item) => item.id?.toString() || item.title, []);
+
+  return (
+    <View style={styles.mainContainer}>
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        numColumns={3}
+        contentContainerStyle={styles.flatListContainer}
+        initialNumToRender={6} // Render only visible items initially
+        maxToRenderPerBatch={9} // Limit batch rendering
+        windowSize={5} // Reduce window size for better memory usage
+        removeClippedSubviews={true} // Helps with memory usage
+        ListEmptyComponent={
+          !loading && <Text style={styles.emptyText}>No items available</Text>
+        }
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    image: {
-        flex: 1,
-        height: 40,
-        justifyContent: 'center',
-    },
-    text: {
-        color: '#B21321',
-        fontSize: 24,
-        padding: 10,
-
-        lineHeight: 24,
-        fontWeight: 'bold',
-        textAlign: 'center',
-
-    },
-
-    container: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        paddingHorizontal: 15,
-        paddingTop: 10,
-    },
-    itemContainer: {
-        width: '30%',
-        alignItems: 'center',
-        marginBottom: 20,
-        borderRadius: 5,
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 5,
-        overflow: 'hidden',
-    },
-    image: {
-        width: "100%",
-        height: 80,
-        marginBottom: 10,
-        resizeMode: 'fill',
-    },
-    title: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#333',
-        textAlign: 'center',
-        paddingHorizontal: 8,
-        paddingBottom: 8,
-    },
-    images: {
-        flex: 1,
-        width: "100%",
-        height: 200,
-        marginBottom: 10,
-        resizeMode: 'contain',
-
-    }
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
+  flatListContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  itemContainer: {
+    flex: 1,
+    marginHorizontal: 4,
+    marginBottom: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+    maxWidth: '33%',
+  },
+  image: {
+    width: '100%',
+    height: 100,
+    resizeMode: 'contain',
+    objectFit: 'contain'
+  },
+  title: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#888',
+  }
 });

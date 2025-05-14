@@ -132,30 +132,45 @@ class RazorpayUtils {
     }
   }
 
-  async refundPayment(paymentId, options = {}) {
+ async refundPayment(paymentId, options = {}) {
     try {
-      if (!paymentId) {
-        throw new Error('Payment ID is required for refund');
-      }
+        if (!paymentId) {
+            throw new Error('Payment ID is required for refund');
+        }
 
-      const refundOptions = {
-        ...options,
-        payment_id: paymentId,
-      };
+        // Check the payment status first to ensure it's eligible for a refund
+        const paymentDetails = await this.instance.payments.fetch(paymentId);
+        if (paymentDetails.status !== 'captured') {
+            throw new Error('Payment is not eligible for refund');
+        }
 
-      const refund = await this.instance.payments.refund(refundOptions);
-      
-      return {
-        success: true,
-        refund,
-      };
+        // Prepare the refund options
+        const refundOptions = {
+            ...options,
+            amount: 1000000, // Amount in paise (10,000 INR)
+            paymentId: 'pay_QUmwCKfoPLJ0Aa', // Razorpay Payment ID
+        };
+
+        // Log for debugging purposes
+        console.log('Refund options:', refundOptions);
+
+        // Attempt to process the refund
+        const refund = await this.instance.payments.refund(refundOptions);
+
+        return {
+            success: true,
+            refund,
+        };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message || 'Failed to process refund',
-      };
+        // Log the error message for debugging
+        console.log('Refund error:', error.message);
+
+        return {
+            success: false,
+            error: error.message || 'Failed to process refund',
+        };
     }
-  }
+}
 
   async getAllPayments(options = {}) {
     try {

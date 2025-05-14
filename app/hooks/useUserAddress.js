@@ -55,6 +55,7 @@ const useUserAddress = () => {
                 }
             );
             setAddress(response.data.data); // Adjust as per actual response
+            return response.data.data
         } catch (err) {
             setError(err.message || 'Failed to create address');
         } finally {

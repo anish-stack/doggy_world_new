@@ -5,7 +5,7 @@ import useGetBannersHook from '../../../hooks/GetBannersHook'
 import TopHeadPart from '../../../layouts/TopHeadPart'
 import ImageSlider from '../../../layouts/ImageSlider'
 import axios from 'axios'
-import { Ionicons, MaterialIcons } from '@expo/vector-icons'
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { API_END_POINT_URL_LOCAL } from '../../../constant/constant'
 import ProductCard from './ProductCard'
 
@@ -35,8 +35,9 @@ export default function Dynmaic_Products_Shop() {
           setData(response.data.data)
         }
       } catch (error) {
-        console.log(error)
-        setError('Failed to load products')
+        setData([])
+        console.log(error.response.data.message)
+        setError(error.response.data.message)
       } finally {
         setLoading(false)
       }
@@ -47,6 +48,7 @@ export default function Dynmaic_Products_Shop() {
 
   useEffect(() => {
     handlePetShopProducts()
+    console.log("title", title)
     fetchBanners(title)
   }, [fetchBanners, handlePetShopProducts, title])
 
@@ -57,10 +59,10 @@ export default function Dynmaic_Products_Shop() {
     })
   }, [navigation])
 
- const renderItem = useCallback(
-  ({ item }) => <ProductCard item={item} navigateToScreen={navigateToScreen} styles={styles} />,
-  [navigateToScreen]
-);
+  const renderItem = useCallback(
+    ({ item }) => <ProductCard item={item} navigateToScreen={navigateToScreen} styles={styles} />,
+    [navigateToScreen]
+  );
 
   const keyExtractor = useCallback((item) => item._id, [])
 
@@ -77,17 +79,33 @@ export default function Dynmaic_Products_Shop() {
     if (error) {
       return (
         <View style={styles.errorContainer}>
-          <MaterialIcons name="error-outline" size={50} color="#E53935" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={handlePetShopProducts}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+          {error === "No pet shop products found for this category" ? (
+            <>
+              <MaterialCommunityIcons name="dog-side-off" size={50} color="#FFA726" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => navigation.navigate('Home')}
+              >
+                <Text style={styles.retryButtonText}>Explore Other Categories</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <MaterialIcons name="error-outline" size={50} color="#E53935" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={handlePetShopProducts}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
-      )
+      );
     }
+
 
     if (data.length === 0) {
       return (

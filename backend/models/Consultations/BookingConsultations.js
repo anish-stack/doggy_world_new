@@ -26,7 +26,7 @@ const BookingConsultationSchema = new mongoose.Schema({
     cancelledBy: {
         type: String,
         enum: ['User', 'Admin'],
-        default: 'User'
+
     },
     status: {
         type: String,
@@ -57,14 +57,16 @@ const BookingConsultationSchema = new mongoose.Schema({
     prescription: {
         description: {
             type: String,
-            trim: true
+            trim: true,
+            default: '',
         },
         medicenSuggest: {
             type: [String],
             default: []
         },
         nextDateForConsultation: {
-            type: Date
+            type: Date,
+            default: null,
         },
         consultationDone: {
             type: Boolean,
@@ -75,6 +77,16 @@ const BookingConsultationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ConsultationDoctor',
         required: true
+    },
+    Rating: {
+        number: {
+            type: Number,
+          
+        },
+        note: {
+            type: String,
+            trim: true,
+        }
     }
 }, { timestamps: true });
 

@@ -308,7 +308,7 @@ export default function BookingConsultation() {
                 image: 'https://i.ibb.co/cSHCKWHm/877c8e22-4df0-4f07-a857-e544208dc0f2.jpg',
                 currency: 'INR',
                 key: payment?.key,
-                amount: payment?.amount * 100,
+                amount: payment?.amount,
                 name: 'Doggy World Care',
                 order_id: payment?.orderId,
 
@@ -334,6 +334,7 @@ export default function BookingConsultation() {
                                 razorpay_order_id: paymentData.razorpay_order_id,
                                 razorpay_signature: paymentData.razorpay_signature,
                                 bookingId: booking._id,
+                                type:'consultation',
                                 fcm: fcmToken
                             }
                         );
@@ -401,7 +402,7 @@ export default function BookingConsultation() {
             // Wait a few seconds to allow webhook processing
             setTimeout(async () => {
                 const statusResponse = await axios.get(
-                    `${API_END_POINT_URL_LOCAL}/api/v1/booking-status/${bookingId}`
+                    `${API_END_POINT_URL_LOCAL}/api/v1/booking-status/${bookingId}/consultation`
                 );
 
                 console.log('status-response', statusResponse.data)

@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
-// Cake Booking Schema
+
 const CakeBookingSchema = new mongoose.Schema({
     cakeDesign: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CakeDesign',
         required: true
     },
-    cakeFlavor: { // Changed to camelCase
+    cakeFlavor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CakeFlavour',
         required: true
@@ -19,18 +19,24 @@ const CakeBookingSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['Pickup At Store', 'Delivery'],
         default: 'Delivery',
         required: true
     },
     clinic: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Clinic',
-        required: true
+        ref: 'Clinic'
+    },
+    orderNumber: {
+        type: String,
+        default: function () {
+            const randomNum = Math.floor(Math.random() * (9999999 - 1000000 + 1)) + 1000000;
+            return `CAKE-${randomNum}`;
+        },
+        unique: true, 
     },
     pet: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pet',
+        ref: 'PetRegister',
         required: true
     },
     bookingStatus: {
@@ -40,90 +46,73 @@ const CakeBookingSchema = new mongoose.Schema({
         required: true
     },
 
-    confirmedDate: { // Fixed typo and changed to camelCase
+    confirmedDate: {
         type: Date,
     },
-    cancelledDate: { // Fixed typo and changed to camelCase
+    cancelledDate: {
         type: Date,
     },
-    dispatchedDate: { // Fixed typo and changed to camelCase
+    dispatchedDate: {
         type: Date,
     },
-    deliveredDate: { // Fixed typo and changed to camelCase
+    deliveredDate: {
         type: Date,
     },
 
     paymentDetails: {
-        razorpayOrderId: {
-            type: String,
-            required: true
-        },
-        razorpayPaymentId: {
-            type: String,
-            required: true
-        },
-        razorpaySignature: {
-            type: String,
-            required: true
-        },
-        amount: {
-            type: Number,
-            required: true
-        },
-        paymentStatus: {
-            type: String,
-            enum: ['Pending', 'Success', 'Failed'],
-            default: 'Pending',
-            required: true
-        }
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment'
     },
-    
-    deliveryInfo: {
-        customerName: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        phoneNumber: {
-            type: String,
-            required: true,
-            validate: {
-                validator: function (v) {
-                    return /\d{10}/.test(v);
-                },
-                message: 'Invalid phone number!'
-            }
-        },
-        address: {
-            type: String,
-            required: true,
-            trim: true
-        },
-        typeOfAddress: {
-            type: String,
-            enum: ['Home', 'Office', 'Other'],
-            default: 'Home',
-            required: true
-        },
-        landmark: {
-            type: String,
-            trim: true
-        }
+
+    petNameOnCake: {
+        type: String,
     },
 
     pickupDate: {
         type: Date,
     },
 
-    specialInstructions: {
-        type: String,
-        trim: true,
-        maxLength: 500
+    isPaid: {
+        type: Boolean,
+        default: false
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+
+    couponApplied: {
+        type: Boolean,
+        default: false
+    },
+
+    couponCode: String,
+    discountAmount: {
+        type: Number,
+        default: 0
+    },
+    subtotal: {
+        type: Number,
+        required: true
+    },
+    taxAmount: {
+        type: Number,
+        default: 0
+    },
+    shippingFee: {
+        type: Number,
+        default: 0
+    },
+    totalAmount: {
+        type: Number,
+        required: true
+    },
+    Same_Day_delivery: {
+        type: Boolean,
+    },
+    deliveryInfo: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Address',
+        required: true
+    },
+    fcmToken: String
+
 
 }, { timestamps: true });
 

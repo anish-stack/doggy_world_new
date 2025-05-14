@@ -1,12 +1,15 @@
 import axios from 'axios'
+import { API_END_POINT_URL_LOCAL } from '../../../../constant/constant'
 
-const BASE_API_URL = 'https://admindoggy.adsdigitalmedia.com/api'
+
 
 export const fetchFlavours = async () => {
     try {
-        const { data } = await axios.get(`${BASE_API_URL}/flavours?populate=*`)
+        const { data } = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/cake-flavours`)
         if (data.data) {
-            const filterOut = data.data.filter((item) => item.active)
+            
+            const filterOut = data.data.filter((item) => item.isActive)
+             
             return filterOut
         } else {
             return []
@@ -20,9 +23,9 @@ export const fetchFlavours = async () => {
 
 export const fetchQunatity = async () => {
     try {
-        const { data } = await axios.get(`${BASE_API_URL}/quantities`)
+        const { data } = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/cake-sizes`)
         if (data.data) {
-            const filterOut = data.data.filter((item) => item.is_active)
+            const filterOut = data.data.filter((item) => item.isActive)
             return filterOut
         } else {
             return []
@@ -35,7 +38,7 @@ export const fetchQunatity = async () => {
 
 export const fetchCakeDesign = async () => {
     try {
-        const { data } = await axios.get(`${BASE_API_URL}/design-datas?populate=*`)
+        const { data } = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/cake-design`)
         if (data.data) {
             const filterOut = data.data.filter((item) => item.is_active)
             return filterOut
@@ -51,7 +54,7 @@ export const fetchCakeDesign = async () => {
 
 export const fetchClinics = async () => {
     try {
-        const { data } = await axios.get(`${BASE_API_URL}/clinics`)
+        const { data } = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/clinic/get-all-clinic`)
         if (data.data) {
             return data.data;
         }

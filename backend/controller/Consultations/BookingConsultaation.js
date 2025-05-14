@@ -7,6 +7,7 @@ const PetRegister = require("../../models/petAndAuth/petregister");
 const PaymentSchema = require("../../models/PaymentSchema/PaymentSchema");
 const LabtestProduct = require("../../models/LabsTest/LabSchema");
 const LabTestBooking = require("../../models/LabsTest/LabBooking");
+const BakeryAndShopBooking = require("../../models/commonBooking/BakeryAndShopBooking");
 
 const sendNotification = require("../../utils/sendNotification");
 const { sendCustomeConulationEmail, sendCustomePhysioEmail } = require("../../utils/sendEmail");
@@ -18,6 +19,9 @@ const dayjs = require('dayjs');
 const SettingsModel = require("../../models/Settings/Settings.model");
 const BookingPhysioModel = require("../../models/PhysioTherapy/BookingPhysio.model");
 const sendPhysioComplete = require("../../utils/whatsapp/sendPhsiyoMessage");
+const { sendEmail } = require("../../utils/emailUtility");
+const CakeBooking = require("../../models/Cake Models/CakeBooking");
+const { invalidateConsultationCache } = require("../Pet controller/PetOrdersControllers");
 const razorpayUtils = new RazorpayUtils(
   process.env.RAZORPAY_KEY_ID,
   process.env.RAZORPAY_KEY_SECRET
@@ -126,8 +130,11 @@ exports.makeBookings = async (req, res) => {
     });
 
     await newBooking.save();
+    if (newBooking.pet) {
+      const redis = req.app.get('redis');
+      await invalidateConsultationCache(newBooking.pet, redis)
 
-
+    }
     return res.status(201).json({
       success: true,
       message: 'Booking initiated successfully',
@@ -775,7 +782,7 @@ exports.MakeABookingForPhysio = async (req, res) => {
       totalPayableAmount,
       fcmToken
     } = req.body;
-   
+
 
     // Validate required fields
     const requiredFields = [
@@ -946,14 +953,14 @@ exports.MakeABookingForPhysio = async (req, res) => {
       // Create booking record with the correct field names
       const newBooking = await BookingPhysioModel.create({
         physio: physio,
-        date: selectedDate,      
-        time: selectedTime,     
+        date: selectedDate,
+        time: selectedTime,
         couponCode,
         couponDiscount,
         totalPayableAmount,
         pet: user,
         bookingRef,
-        paymentDetails: saveInPayment._id,  
+        paymentDetails: saveInPayment._id,
         status: 'Pending',
         fcmToken,
         bookingType
@@ -1067,6 +1074,12 @@ exports.verifyPayment = async (req, res) => {
       case 'physiotherapy':
         booking = await handlePhysioBooking(bookingId, razorpay_payment_id, booking?.fcmToken);
         break;
+      case 'petShopAndBakery':
+        booking = await handleProductOrder(bookingId, razorpay_payment_id, booking?.fcmToken);
+        break;
+      case 'cakes':
+        booking = await handleCakeOrder(bookingId, razorpay_payment_id, booking?.fcmToken);
+        break;
       default:
         console.warn('[Payment] Unknown booking type:', type);
         return res.status(400).json({
@@ -1152,10 +1165,10 @@ async function handleConsultationBooking(bookingId, paymentId, fcm) {
 
 async function handlePhysioBooking(bookingId, paymentId, fcm) {
   try {
-  
+
     const booking = await BookingPhysioModel.findById(bookingId)
       .populate('paymentDetails physio pet');
-    
+
     if (!booking) {
       throw new Error('Physiotherapy booking not found');
     }
@@ -1164,23 +1177,23 @@ async function handlePhysioBooking(bookingId, paymentId, fcm) {
     booking.status = 'Confirmed';
     booking.paymentComplete = true;
     booking.updatedAt = new Date();
-    
+
     // Update payment details if available
     if (booking.paymentDetails) {
       booking.paymentDetails.razorpay_payment_id = paymentId;
       booking.paymentDetails.payment_status = "paid";
       await booking.paymentDetails.save();
     }
-    
+
     // Save the updated booking
     await booking.save();
-    
+
     // Prepare data for email notification
     const petName = booking.pet?.petname || 'your pet';
     const physioService = booking.physio?.title || 'physiotherapy session';
     const appointmentDate = booking.date ? new Date(booking.date).toLocaleDateString() : 'scheduled date';
     const appointmentTime = booking.time || 'scheduled time';
-    
+
     const emailData = {
       PhysioType: physioService,
       date: appointmentDate,
@@ -1191,34 +1204,190 @@ async function handlePhysioBooking(bookingId, paymentId, fcm) {
       whenBookingDone: booking.createdAt,
       ownerNumber: booking.pet?.petOwnertNumber
     };
-    
+
     // Send confirmation email
     await sendCustomePhysioEmail({ data: emailData });
-    
+
     // Send push notification if FCM token is available
     if (booking?.fcmToken) {
       const title = '🐾 Physiotherapy Appointment Confirmed';
       const body = `Great news! Your ${physioService} appointment for ${petName} on ${appointmentDate} at ${appointmentTime} has been confirmed. We look forward to helping your pet feel better!`;
       await safeSendNotification(booking?.fcmToken, title, body);
     }
-    
+
     // Prepare and send SMS notification
     const smsContent = {
       name: petName,
       Date: appointmentDate,
       service: physioService,
       BookingId: booking.bookingRef,
-      number: '91 9811299059' 
+      number: '91 9811299059'
     };
-    
+
     await sendPhysioComplete(booking.pet?.petOwnertNumber, smsContent);
-    
+
     return booking;
   } catch (error) {
     console.error('Error in handlePhysioBooking:', error);
     throw error; // Re-throw to let the caller handle it
   }
 }
+async function handleProductOrder(bookingId, paymentId, fcm) {
+  try {
+    // Find and populate the booking
+    const booking = await BakeryAndShopBooking.findById(bookingId)
+      .populate('paymentDetails')
+      .populate('items.itemId')
+      .populate('petId')
+      .populate('deliveryInfo');
+
+    if (!booking) {
+      throw new Error('Shop booking not found');
+    }
+
+    // Update booking status
+    booking.status = 'Confirmed';
+    booking.paymentStatus = 'Completed';
+    booking.isPaid = true;
+    booking.fcmToken = fcm || booking.fcmToken; // Update FCM token if provided
+
+    // Add to status history
+    booking.statusHistory.push({
+      status: 'Confirmed',
+      timestamp: new Date(),
+      note: `Order confirmed after payment ${paymentId}`
+    });
+
+    // Update payment details if available
+    if (booking.paymentDetails) {
+      booking.paymentDetails.razorpay_payment_id = paymentId;
+      booking.paymentDetails.payment_status = "paid";
+      await booking.paymentDetails.save();
+    }
+
+    // Save the updated booking
+    await booking.save();
+
+    // Generate email data
+    const emailData = createOrderEmailData(booking);
+
+    // Send email notification
+    try {
+      await sendEmail(emailData);
+      console.log(`Order confirmation email sent for order: ${booking.orderNumber}`);
+    } catch (emailError) {
+      console.error('Failed to send order confirmation email:', emailError);
+      // Continue execution even if email fails
+    }
+
+    // Send push notification if FCM token is available
+    if (booking.fcmToken) {
+      try {
+        const notificationData = createNotificationData(booking);
+        await safeSendNotification(
+          booking.fcmToken,
+          notificationData.title,
+          notificationData.body
+        );
+        console.log(`Push notification sent for order: ${booking.orderNumber}`);
+      } catch (notificationError) {
+        console.error('Failed to send push notification:', notificationError);
+        // Continue execution even if notification fails
+      }
+    }
+
+    // Prepare and send SMS notification
+    try {
+      const smsContent = {
+        name: booking.petId?.petname || 'your pet',
+        Date: new Date(booking.deliveryDate).toLocaleDateString(),
+        service: 'Product Order',
+        BookingId: booking.orderNumber,
+        number: '+91 9811299059'
+      };
+
+      await safeSendNotification(booking.fcmToken, 'Product Order', smsContent);
+      console.log(`SMS notification sent for order: ${booking.orderNumber}`);
+    } catch (smsError) {
+      console.error('Failed to send SMS notification:', smsError);
+      // Continue execution even if SMS fails
+    }
+
+    return booking;
+  } catch (error) {
+    console.error('Error in handleProductOrder:', error);
+    throw new Error(`Failed to process product order: ${error.message}`);
+  }
+}
+async function handleCakeOrder(bookingId, paymentId, fcm) {
+  try {
+    // Find and populate the booking
+    const booking = await CakeBooking.findById(bookingId)
+      .populate('paymentDetails')
+      .populate('cakeDesign')
+      .populate('cakeFlavor')
+      .populate('clinic')
+      .populate('size')
+      .populate('pet')
+      .populate('deliveryInfo');
+
+    if (!booking) {
+      throw new Error('Cake booking not found');
+    }
+
+    // Update booking status
+    booking.bookingStatus = 'Confirmed';
+
+    booking.isPaid = true;
+    booking.fcmToken = fcm || booking.fcmToken;
+
+
+    // Update payment details if available
+    if (booking.paymentDetails) {
+      booking.paymentDetails.razorpay_payment_id = paymentId;
+      booking.paymentDetails.payment_status = "paid";
+      await booking.paymentDetails.save();
+    }
+
+
+    await booking.save();
+
+    // Generate email data
+    const emailData = createCakeOrderEmailData(booking);
+
+    // Send email notification
+    try {
+      await sendEmail(emailData);
+      console.log(`Order confirmation email sent for order: ${booking.orderNumber}`);
+    } catch (emailError) {
+      console.error('Failed to send order confirmation email:', emailError);
+      // Continue execution even if email fails
+    }
+
+    // Send push notification if FCM token is available
+    if (booking.fcmToken) {
+      try {
+        const notificationData = createNotificationForCake(booking);
+        await safeSendNotification(
+          booking.fcmToken,
+          notificationData.title,
+          notificationData.body
+        );
+        console.log(`Push notification sent for order: ${booking._id}`);
+      } catch (notificationError) {
+        console.error('Failed to send push notification:', notificationError);
+        // Continue execution even if notification fails
+      }
+    }
+
+
+    return booking;
+  } catch (error) {
+    console.error('Error in handleProductOrder:', error);
+    throw new Error(`Failed to process product order: ${error.message}`);
+  }
+}
+
 async function handleVaccineBooking(bookingId, paymentId, fcm) {
 
   const booking = await VaccinationBooking.findById(bookingId)
@@ -1309,13 +1478,182 @@ async function safeSendNotification(fcmToken, title, body) {
   }
 }
 
+const createOrderEmailData = (booking) => {
+  try {
+    if (!booking) {
+      throw new Error('Booking data is required for email creation');
+    }
+
+    // Extract pet information
+    const petName = booking.petId?.petname || 'your pet';
+
+    // Format delivery date
+    const deliveryDate = booking.deliveryDate
+      ? new Date(booking.deliveryDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+      : 'scheduled delivery date';
+
+    // Format order items for email
+    const itemsList = booking.items.map(item => {
+      return {
+        name: item.variantName || item.itemModel === 'petBakeryProduct' ? 'Bakery Item' : 'Shop Item',
+        quantity: item.quantity,
+        price: item.unitPrice.toFixed(2),
+        subtotal: item.subtotal.toFixed(2)
+      };
+    });
+
+    // Address formatting
+    const deliveryAddress = booking.deliveryInfo ? `
+      ${booking.deliveryInfo.addressLine1 || ''}
+      ${booking.deliveryInfo.addressLine2 || ''}
+      ${booking.deliveryInfo.city || ''}, ${booking.deliveryInfo.state || ''}, ${booking.deliveryInfo.pincode || ''}
+    ` : 'Address information not available';
+
+    // Compile email data
+    const emailData = {
+      to: 'anishjha896@gmail.com',
+      subject: `Order Confirmation: ${booking.orderNumber}`,
+      template: 'order-confirmation',
+      data: {
+        customerName: booking.petId?.petOwnerName || 'Valued Customer',
+        petName: petName,
+        orderNumber: booking.orderNumber,
+        orderDate: new Date(booking.createdAt).toLocaleDateString(),
+        deliveryDate: deliveryDate,
+        items: itemsList,
+        subtotal: booking.subtotal.toFixed(2),
+        shippingFee: booking.shippingFee.toFixed(2),
+        tax: booking.taxAmount.toFixed(2),
+        discount: booking.discountAmount.toFixed(2),
+        total: booking.totalAmount.toFixed(2),
+        paymentMethod: booking.paymentMethod,
+        deliveryAddress: deliveryAddress,
+        specialInstructions: booking.specialInstructions || 'None provided',
+        supportEmail: 'support@petstore.com',
+        supportPhone: '+91 9811299059'
+      }
+    };
+
+    return emailData;
+  } catch (error) {
+    console.error('Error creating email data:', error);
+    // Return a basic email data object in case of error
+    return {
+      to: booking.petId?.petOwnerEmail,
+      subject: `Order Confirmation: ${booking.orderNumber || 'New Order'}`,
+      template: 'order-confirmation-basic',
+      data: {
+        orderNumber: booking.orderNumber || 'Not available',
+        supportPhone: '+91 9811299059'
+      }
+    };
+  }
+};
+
+
+const createCakeOrderEmailData = (booking) => {
+  try {
+    if (!booking) {
+      throw new Error('Booking data is required for email creation');
+    }
+
+    // Determine event date based on type
+    const isPickup = booking.type === 'Pickup At Store';
+    const eventDateRaw = isPickup ? booking.pickupDate : booking.deliveredDate;
+
+    const formattedEventDate = eventDateRaw
+      ? new Date(eventDateRaw).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+      : 'scheduled date';
+
+    // Address formatting
+    const deliveryAddress = booking.deliveryInfo
+      ? `
+   
+        ${booking?.deliveryInfo?.city || ''}, ${booking?.deliveryInfo?.street || ''}, ${booking?.deliveryInfo?.zipCode || ''}
+      `
+      : 'Address information not available';
+
+    // Cake Details
+    const cakeDetails = {
+      design: booking.cakeDesign?.name || 'Custom Design',
+      flavor: booking.cakeFlavor?.name || 'Selected Flavor',
+      size: booking.size?.weight || 'Custom Size',
+      quantity: booking.quantity || 1,
+      pricePerCake: booking.size?.price?.toFixed(2) || '0.00',
+      totalPrice: booking.totalAmount?.toFixed(2) || '0.00'
+    };
+
+
+    const emailData = {
+      to: 'anishjha896@gmail.com' || 'customer@example.com',
+      subject: `Cake Order Confirmation: ${booking.orderNumber}`,
+      template: 'cake-order-confirmation',
+      data: {
+        customerName: 'Valued Customer',
+        petName: booking.pet?.petname || 'your pet',
+        orderNumber: booking.orderNumber,
+        orderDate: new Date(booking.createdAt).toLocaleDateString('en-US'),
+        type: booking.type,
+        deliveryOrPickupDate: formattedEventDate,
+        cakeDetails,
+        subtotal: booking.subtotal?.toFixed(2) || '0.00',
+        shippingFee: booking.shippingFee?.toFixed(2) || '0.00',
+        tax: booking.taxAmount?.toFixed(2) || '0.00',
+        discount: booking.discountAmount?.toFixed(2) || '0.00',
+        total: booking.totalAmount?.toFixed(2) || '0.00',
+        paymentMethod: 'Online' || 'N/A',
+        deliveryAddress,
+        specialInstructions: booking.petNameOnCake || 'None provided',
+        supportEmail: 'support@petstore.com',
+        supportPhone: '+91 9811299059'
+      }
+    };
+
+    return emailData;
+  } catch (error) {
+    console.error('Error creating cake order email data:', error);
+    return {
+      to: booking?.petId?.petOwnerEmail || 'customer@example.com',
+      subject: `Cake Order Confirmation: ${booking?.orderNumber || 'New Order'}`,
+      template: 'cake-order-confirmation-basic',
+      data: {
+        orderNumber: booking?.orderNumber || 'Not available',
+        supportPhone: '+91 9811299059'
+      }
+    };
+  }
+};
 
 
 
+const createNotificationData = (booking) => {
+  return {
+    title: `Order Confirmed: ${booking.orderNumber}`,
+    body: `Your order for ${booking.petId?.petname || 'your pet'} has been confirmed and will be delivered on ${new Date(booking.deliveryDate).toLocaleDateString()}.`
+  };
+};
 
 
+const createNotificationForCake = (booking) => {
+  const isPickup = booking.type === 'Pickup At Store';
+  const date = isPickup ? booking.pickupDate : booking.deliveredDate;
 
-
+  return {
+    title: `Order Confirmed: ${booking.orderNumber}`,
+    body: `Your order for ${booking.pet?.petname || 'your pet'} has been confirmed and will be ${isPickup ? 'ready for pickup' : 'delivered'
+      } on ${new Date(date).toLocaleDateString()}.`
+  };
+};
 
 
 
@@ -1567,6 +1905,8 @@ exports.getBookingStatus = async (req, res) => {
       booking = await LabTestBooking.findById(bookingId).populate('paymentDetails');
     } else if (type === 'physio') {
       booking = await BookingPhysioModel.findById(bookingId).populate('paymentDetails');
+    } else if (type === 'petShopAndBakery') {
+      booking = await BakeryAndShopBooking.findById(bookingId).populate('paymentDetails');
     } else {
       return res.status(400).json({
         success: false,

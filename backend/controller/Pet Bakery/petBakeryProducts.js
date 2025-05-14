@@ -288,6 +288,39 @@ exports.getBakeryProductById = async (req, res) => {
     }
 };
 
+exports.getBakeryProductCategoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await petBakeryProduct.find({
+            category:id
+        })
+            .populate('category', 'title tag');
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Pet bakery product not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            product
+        });
+
+    } catch (error) {
+        console.error('Error fetching pet bakery product:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch pet bakery product',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+
 
 exports.updateBakeryProduct = async (req, res) => {
     let publicIds = [];

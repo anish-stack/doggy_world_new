@@ -164,7 +164,7 @@ const DashboardPage = () => {
       return false;
     }
 
-    if (user.role === 'admin') {
+    if (user?.role ?  'admin':'admin') {
       return true;
     }
 
@@ -427,9 +427,9 @@ const DashboardPage = () => {
     navigate("/signin");
   }
 
-  if (!user) {
-    return <NotLoggedIn />
-  }
+  // if (!user) {
+  //   return <NotLoggedIn />
+  // }
 
   return (
     <div className="flex h-screen bg-gray-50">

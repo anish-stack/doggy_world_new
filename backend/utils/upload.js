@@ -14,6 +14,7 @@ Cloudinary.config({
 
 
 const getFileType = (mimetype) => {
+  console.log("mimetype",mimetype)
   if (mimetype.startsWith('image/')) {
     return mimetype === 'image/gif' ? 'gif' : 'image';
   } else if (mimetype.startsWith('video/')) {

@@ -38,9 +38,10 @@ import { API_URL } from "@/constant/Urls";
 const SERVICE_TYPES = [
   { value: "consultation", label: "Consultation" },
   { value: "Dry Food", label: "Dryfood" },
+  { value: "Pet Bakery", label: "Pet Bakery" },
   { value: "Toys", label: "Toys" },
   { value: "Treats", label: "Treats" },
-  { value: "WetFood", label: "Wet Food" },
+  { value: "Wet Food", label: "Wet Food" },
   { value: "WinterWears", label: "WinterWears" },
   { value: "Bones", label: "Bones" },
   { value: "SummerWears", label: "Summer Wears" },

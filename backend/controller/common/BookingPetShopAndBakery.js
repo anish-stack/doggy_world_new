@@ -17,14 +17,14 @@ exports.makeBookingForPetBakeryAndShop = async (req, res) => {
         const petId = req.user.id; // Get petId from authenticated user
         const data = req.body;
 
-        console.log("Pet ID:", petId);
+        console.log("Pet ID:", req.user);
         console.log("Booking Request Body:", data);
 
         // 1. Validate items and fetch product details
         const itemsWithDetails = [];
         let subtotal = 0;
 
-        // Process each item in the order
+
         for (const item of data.items) {
             // Determine which model to use based on product type
             const productModel = item.isPetShopProduct ? petShopProduct : petBakeryProduct;
@@ -112,6 +112,7 @@ exports.makeBookingForPetBakeryAndShop = async (req, res) => {
             totalAmount: totalAmount,
             paymentMethod: data.paymentMethod,
             couponApplied: !!data.couponCode,
+            fcmToken: data.fcm,
             couponCode: data.couponCode || undefined,
             status: 'Pending'
         };
@@ -160,13 +161,14 @@ exports.makeBookingForPetBakeryAndShop = async (req, res) => {
                 data: {
                     bookingId: booking._id,
                     orderNumber: booking.orderNumber,
-                    razorpayOrderId: razorpayOrder.id,
+                    razorpayOrderId: razorpayOrder.order.id,
                     razorpayKey: process.env.RAZORPAY_KEY_ID,
                     amount: orderOptions.amount,
                     currency: orderOptions.currency
-                }
+                },
+                user: req.user ? req.user : {}
             };
-        } else if (data.paymentMethod.toLowerCase() === 'cash on delivery') {
+        } else if (data.paymentMethod.toLowerCase() === 'cash on delivery' || data.paymentMethod.toLowerCase() === 'cod') {
             // Create booking with COD payment method
             const booking = new BakeryAndShopBooking({
                 ...bookingData,
@@ -201,5 +203,28 @@ exports.makeBookingForPetBakeryAndShop = async (req, res) => {
             message: "Server error while making booking",
             error: error.message
         });
+    }
+};
+
+
+
+exports.getBookingDetailsShopBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+console.log(id)
+        const findOrder = await BakeryAndShopBooking.findById(id)
+            .populate('paymentDetails')
+            .populate('items.itemId')
+            .populate('petId')
+            .populate('deliveryInfo');
+console.log(findOrder)
+        if (!findOrder) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        return res.status(200).json({ success: true, data: findOrder });
+    } catch (error) {
+        console.error("Error fetching booking details:", error);
+        return res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };

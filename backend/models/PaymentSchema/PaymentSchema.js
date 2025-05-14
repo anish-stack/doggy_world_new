@@ -24,6 +24,10 @@ const PaymentSchema = new mongoose.Schema({
         type: String,
 
         default: 'Pending'
+    },
+    refundDetails:{
+        type:Object,
+         default: {}
     }
 }, {
     timestamps: true

@@ -9,7 +9,7 @@ const { createCakeFlavour, getAllCakeFlavours, getSingleCakeFlavour, updateCakeF
 const { createCakeDesign, getAllCakeDesigns, getCakeDesignById, updateCakeDesign, deleteCakeDesign } = require('../controller/Cake Controller/DesignController');
 const { createSizeForCake, getAllCakeSizes, getCakeSizeById, updateCakeSize, deleteCakeSize } = require('../controller/Cake Controller/SizeController');
 const { createPetBakery, getAllPetBakery, updatePetBakery, deletePetBakery, getSinglePetBakery } = require('../controller/Pet Bakery/petBakeryCategory');
-const { createBakeryProduct, getAllBakeryProducts, getBakeryProductById, updateBakeryProduct, deleteBakeryProduct } = require('../controller/Pet Bakery/petBakeryProducts');
+const { createBakeryProduct, getAllBakeryProducts, getBakeryProductById, updateBakeryProduct, deleteBakeryProduct, getBakeryProductCategoryById } = require('../controller/Pet Bakery/petBakeryProducts');
 const { createPhysioTherepay, getAllPhysioTherapies, getPhysioTherapyById, updatePhysioTherapy, deletePhysioTherapy } = require('../controller/PhysioTherapy/PhysioTherapy');
 const { createCoupon, getCoupons, getCouponById, updateCoupon, deleteCoupon } = require('../controller/common/Coupon');
 const { createPetShopCategory, getAllPetShopCategories, getSinglePetShopCategory, updatePetShopCategory, deletePetShopCategory } = require('../controller/Pet Shops/PetShopCategories');
@@ -27,14 +27,16 @@ const { createGroomingPackagejson, getAllGroomingPackagesjson, getGroomingPackag
 const { createConsultation, updateConsultation, deleteConsultation, getAllConsultations, getSingleConsultation } = require('../controller/Consultations/Consultation');
 const { createDoctorConsultation, getAllDoctorConsultations, getSingleDoctorConsultation, updateDoctorConsultation, deleteDoctorConsultation } = require('../controller/Consultations/AvailableDoctors');
 const notificationController = require('../controller/FCM/NotificationToken');
-const { makeBookings, verifyPayment, getBookingStatus, MakeABookingForVaccines,MakeABookingForPhysio, MakeABookingForlabTest } = require('../controller/Consultations/BookingConsultaation');
+const { makeBookings, verifyPayment, getBookingStatus, MakeABookingForVaccines, MakeABookingForPhysio, MakeABookingForlabTest } = require('../controller/Consultations/BookingConsultaation');
 const { createAddress, getAllAddressesByPetId, getAddressById, updateAddress, deleteAddress } = require('../controller/Address/Address');
 const { createTypeOfLabTest, getAllTypeOfLabTests, getSingleTypeOfLabTest, updateTypeOfLabTest, deleteTypeOfLabTest } = require('../controller/LabControllers/TypeOfLabs');
 const { createLabTestProduct, AllBookingsOfLab, getAllLabTestProducts, getSingleLabTestProduct, updateLabTestProduct, deleteLabTestProduct } = require('../controller/LabControllers/LabController');
 const { createSettings, getSettings, updateSettings, deleteSettings, createAdminSettings } = require('../controller/AdminSettings/Settings');
 const { BookingOfLabTest } = require('../controller/LabControllers/LabOrderController');
 const { AllBookingsOfPhysio } = require('../controller/PhysioTherapy/PhysioOrders');
-const { makeBookingForPetBakeryAndShop } = require('../controller/common/BookingPetShopAndBakery');
+const { makeBookingForPetBakeryAndShop, getBookingDetailsShopBooking } = require('../controller/common/BookingPetShopAndBakery');
+const { makeBookingForCake } = require('../controller/Cake Controller/CakeBooking');
+const { getMyConsultationsBooking, getMyConsultationsBookingSingle, resecheduleBooking, CancelBooking, addRating } = require('../controller/Pet controller/PetOrdersControllers');
 
 const router = express.Router();
 
@@ -58,6 +60,16 @@ router.delete('/pet-profile/:petId', deletePetProfile);
 router.put('/change-owner-number/:petId', changePetOwnerNumber);
 router.post('/verify-number-change-otp/:petId', verifyNumberChangeOtp);
 router.get('/all-pets', getAllPets);
+
+
+//pet consulations events
+router.get('/pet-profile-consultations-booking/:id',  getMyConsultationsBooking);
+router.get('/consultations-booking/:id',  getMyConsultationsBookingSingle);
+router.post('/consultations-reschedule',  resecheduleBooking);
+router.get('/consultations-cancel',  CancelBooking);
+router.post('/consultations-rate',  addRating);
+
+
 
 router.post('/addresses', isAuthenticated, createAddress);
 router.get('/addresses', isAuthenticated, getAllAddressesByPetId);
@@ -176,6 +188,7 @@ router.get('/get-pet-bakery/:id', getSinglePetBakery);
 router.post('/create-pet-bakery-product', upload.array("images"), createBakeryProduct);
 router.get('/get-bakery-product', getAllBakeryProducts);
 router.get('/get-bakery-product/:id', getBakeryProductById);
+router.get('/get-bakery-category-product/:id', getBakeryProductCategoryById);
 router.post('/update-bakery-product/:id', upload.array("images"), updateBakeryProduct);
 router.delete('/delete-bakery-product/:id', deleteBakeryProduct);
 
@@ -321,9 +334,11 @@ router.post('/booking-physio', isAuthenticated, MakeABookingForPhysio);
 router.post('/booking-verify-payment', verifyPayment);
 router.get('/booking-status/:bookingId/:type', getBookingStatus);
 
-router.post('/booking-for-shop',isAuthenticated, makeBookingForPetBakeryAndShop);
+router.post('/booking-for-shop', isAuthenticated, makeBookingForPetBakeryAndShop);
+router.get('/booking-details/:id', getBookingDetailsShopBooking);
 
 
+router.post('/create-cake-order', isAuthenticated, makeBookingForCake);
 
 // lab test Routes
 
