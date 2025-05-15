@@ -9,6 +9,7 @@ const { sendEmail } = require("../../utils/emailUtility");
 const { sendCustomRescheduleMessageEmail } = require("../../utils/sendEmail");
 const RazorpayUtils = require("../../utils/razorpayUtils");
 const Razorpay = require('razorpay');
+const sendNotification = require("../../utils/sendNotification");
 
 const razorpayUtils = new Razorpay(
     {
@@ -86,6 +87,43 @@ exports.getMyConsultationsBooking = async (req, res) => {
     }
 };
 
+
+exports.getAllConsultationsBookings = async (req, res) => {
+    try {
+        const myConsultationsBooking = await BookingConsultations.find()
+            .populate('consultationType', 'name price discount_price description')
+            .populate('paymentDetails')
+            .populate('doctorId', 'name image discount price specializations')
+            .populate('pet', 'petname petOwnertNumber petbreed petdob')
+            .sort({ createdAt: -1 });
+
+
+        if (!myConsultationsBooking || myConsultationsBooking.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No consultations found',
+                data: []
+            });
+        }
+
+
+        return res.status(200).json({
+            success: true,
+            message: 'Consultations fetched successfully',
+            count: myConsultationsBooking.length,
+            data: myConsultationsBooking
+        });
+
+    } catch (error) {
+        console.error('Error fetching consultations:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch consultations',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
 
 exports.getMyConsultationsBookingSingle = async (req, res) => {
     try {
@@ -345,6 +383,75 @@ exports.addRating = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Something went wrong while adding rating.',
+        });
+    }
+};
+
+exports.addPrescriptions = async (req, res) => {
+    try {
+        const {
+            id,
+            description,
+            medicenSuggest = [],
+            nextDateForConsultation,
+            consultationDone = true,
+        } = req.body;
+
+        // Validate input
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required parameter: id.',
+            });
+        }
+
+        // Fetch booking details
+        const booking = await BookingConsultations.findById(id);
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found or already cancelled.',
+            });
+        }
+
+        // Add prescription details
+        booking.prescription = {
+            description,
+            medicenSuggest,
+            nextDateForConsultation,
+            consultationDone,
+        };
+        booking.status = 'Completed'
+        // Save changes
+        await booking.save();
+
+        // Send FCM Notification if token exists
+        if (booking.fcmToken) {
+            const notificationData = {
+                title: 'Prescription Updated',
+                body: 'Your doctor has added a new prescription to your consultation.',
+            };
+            try {
+                await sendNotification(booking.fcmToken, notificationData.title, notificationData?.body);
+                console.log('✅ FCM notification sent successfully.');
+            } catch (notificationError) {
+                console.error('❌ Failed to send FCM notification:', notificationError);
+            }
+            await sendNotification(booking.fcmToken, notificationData.title, notificationData?.body);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Prescription added successfully.',
+            data: booking.prescription,
+        });
+
+    } catch (error) {
+        console.error("❌ Error in addPrescriptions:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while adding prescription.',
         });
     }
 };

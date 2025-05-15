@@ -1,4 +1,3 @@
-"use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
@@ -19,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from 'sonner';
-import { 
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -28,6 +27,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from '@/components/ui/checkbox';
+import { API_URL } from '@/constant/Urls';
 
 // Status color mapping
 const statusColors = {
@@ -71,7 +71,7 @@ const AllLabOrders = () => {
 
   // Selected booking for actions
   const [selectedBooking, setSelectedBooking] = useState(null);
-  
+
   // Dialog states
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
@@ -108,7 +108,7 @@ const AllLabOrders = () => {
       if (filters.bookingType) params.append('bookingType', filters.bookingType);
       if (filters.search) params.append('search', filters.search);
 
-      const response = await axios.get(`http://localhost:8000/api/v1/lab-tests-booking?${params.toString()}`);
+      const response = await axios.get(`${API_URL}/lab-tests-booking?${params.toString()}`);
 
       if (response.data.success) {
         setBookings(response.data.data.bookings);
@@ -215,7 +215,7 @@ const AllLabOrders = () => {
     setIsSubmitting(true);
     try {
       const formattedDate = format(rescheduleDate, 'yyyy-MM-dd');
-      
+
       const payload = {
         rescheduledDate: formattedDate,
         rescheduledTime: rescheduleTime,
@@ -233,25 +233,19 @@ const AllLabOrders = () => {
           setIsSubmitting(false);
           return;
         }
-        
+
         payload.Address = addressForm;
       }
 
-      await axios.put(`http://localhost:8000/api/v1/lab-tests-booking/${selectedBooking._id}/reschedule`, payload);
+      const response = await axios.put(`http://localhost:8000/api/v1/lab-tests-booking-reschedule?id=${selectedBooking._id}&type=reschedule`, payload);
 
-      toast({
-        title: "Booking Rescheduled",
-        description: `Appointment rescheduled to ${format(rescheduleDate, 'PPP')} at ${rescheduleTime}`,
-      });
+      console.log(response.data)
+
 
       setRescheduleOpen(false);
       fetchBookings();
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to reschedule booking",
-        variant: "destructive"
-      });
+      console.log(err)
     } finally {
       setIsSubmitting(false);
     }
@@ -261,33 +255,26 @@ const AllLabOrders = () => {
   const handleDeleteBooking = async () => {
     setIsSubmitting(true);
     try {
-      await axios.delete(`http://localhost:8000/api/v1/lab-tests-booking/${selectedBooking._id}`);
+      await axios.delete(`${API_URL}/lab-tests-booking-delete/${selectedBooking._id}`);
 
-      toast({
-        title: "Booking Deleted",
-        description: "Lab test booking has been deleted successfully",
-      });
+      toast.success('Lab test booking has been deleted successfully');
 
       setDeleteConfirmOpen(false);
       fetchBookings();
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to delete booking",
-        variant: "destructive"
-      });
+      toast.success(err.response.data.message || 'Failed to delete booking');
+
+
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle cancel booking
+
   const handleCancelBooking = async () => {
     setIsSubmitting(true);
     try {
-      await axios.put(`http://localhost:8000/api/v1/lab-tests-booking/${selectedBooking._id}/status`, {
-        status: "Cancelled"
-      });
+      await axios.put(`http://localhost:8000/api/v1/lab-booking-cancel?id=${selectedBooking._id}&status=Cancelled`);
 
       toast({
         title: "Booking Cancelled",
@@ -324,7 +311,7 @@ const AllLabOrders = () => {
   // Open booking details
   const openBookingDetails = (booking) => {
     setSelectedBooking(booking);
-    
+
     // Pre-fill address form if it's a home booking
     if (booking.bookingType === 'Home' && booking.Address) {
       setAddressForm({
@@ -335,19 +322,19 @@ const AllLabOrders = () => {
         country: booking.Address.country || "IN"
       });
     }
-    
+
     setViewDetailsOpen(true);
   };
 
   // Open reschedule dialog
   const openRescheduleDialog = (booking) => {
     setSelectedBooking(booking);
-    
+
     // Pre-fill with current values
     const currentDate = booking.rescheduledDate ? new Date(booking.rescheduledDate) : new Date(booking.selectedDate);
     setRescheduleDate(currentDate);
     setRescheduleTime(booking.rescheduledTime || booking.selectedTime);
-    
+
     // Pre-fill address form if it's a home booking
     if (booking.bookingType === 'Home' && booking.Address) {
       setAddressForm({
@@ -358,7 +345,7 @@ const AllLabOrders = () => {
         country: booking.Address.country || "IN"
       });
     }
-    
+
     setUpdateAddress(false);
     setRescheduleOpen(true);
   };
@@ -442,39 +429,39 @@ const AllLabOrders = () => {
                 </Popover>
               </div>
             </div>
-            
-            <div>
-  <Label htmlFor="status-filter">Status</Label>
-  <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-    <SelectTrigger>
-      <SelectValue placeholder="All Statuses" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">All Statuses</SelectItem>
-      <SelectItem value="Pending">Pending</SelectItem>
-      <SelectItem value="Confirmed">Confirmed</SelectItem>
-      <SelectItem value="Completed">Completed</SelectItem>
-      <SelectItem value="Cancelled">Cancelled</SelectItem>
-      <SelectItem value="Facing Error">Facing Error</SelectItem>
-      <SelectItem value="Rescheduled">Rescheduled</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
 
-          
-<div>
-  <Label htmlFor="type-filter">Booking Type</Label>
-  <Select value={filters.bookingType} onValueChange={(value) => handleFilterChange('bookingType', value)}>
-    <SelectTrigger>
-      <SelectValue placeholder="All Types" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">All Types</SelectItem>
-      <SelectItem value="Clinic">Clinic</SelectItem>
-      <SelectItem value="Home">Home</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
+            <div>
+              <Label htmlFor="status-filter">Status</Label>
+              <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Confirmed">Confirmed</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                  <SelectItem value="Facing Error">Facing Error</SelectItem>
+                  <SelectItem value="Rescheduled">Rescheduled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            <div>
+              <Label htmlFor="type-filter">Booking Type</Label>
+              <Select value={filters.bookingType} onValueChange={(value) => handleFilterChange('bookingType', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Clinic">Clinic</SelectItem>
+                  <SelectItem value="Home">Home</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <div>
               <Label htmlFor="search-filter" className="mb-1.5 block">Search</Label>
@@ -490,11 +477,11 @@ const AllLabOrders = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end mb-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={resetFilters}
               className="flex items-center gap-1"
             >
@@ -672,7 +659,7 @@ const AllLabOrders = () => {
             <DialogHeader>
               <DialogTitle className="text-xl">Booking Details</DialogTitle>
               <DialogDescription className="flex items-center gap-2">
-                <span>Reference:</span> 
+                <span>Reference:</span>
                 <Badge variant="outline" className="font-mono">{selectedBooking.bookingRef}</Badge>
               </DialogDescription>
             </DialogHeader>
@@ -702,7 +689,7 @@ const AllLabOrders = () => {
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base">Booking Information</CardTitle>
@@ -722,7 +709,7 @@ const AllLabOrders = () => {
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card className="col-span-2">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base">Appointment Details</CardTitle>
@@ -740,7 +727,7 @@ const AllLabOrders = () => {
                               <span>{selectedBooking.selectedTime}</span>
                             </div>
                           </div>
-                          
+
                           {selectedBooking.rescheduledDate && (
                             <div>
                               <h4 className="text-sm font-medium text-muted-foreground">Rescheduled To</h4>
@@ -755,9 +742,9 @@ const AllLabOrders = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <Separator className="my-4" />
-                        
+
                         {selectedBooking.bookingType === 'Clinic' && selectedBooking.clinic && (
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground">Clinic</h4>
@@ -798,9 +785,9 @@ const AllLabOrders = () => {
                           </div>
                           {test.mainImage?.url && (
                             <div className="h-12 w-12 rounded-md overflow-hidden">
-                              <img 
-                                src={test.mainImage.url || "/placeholder.svg"} 
-                                alt={test.title} 
+                              <img
+                                src={test.mainImage.url || "/placeholder.svg"}
+                                alt={test.title}
                                 className="h-full w-full object-cover"
                               />
                             </div>
@@ -912,6 +899,17 @@ const AllLabOrders = () => {
                   >
                     Reschedule
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-600 text-purple-600 hover:bg-red-50"
+                    onClick={() => {
+                      setUpdateStatusOpen(true)
+                    }}
+                  >
+                    Update Status
+                  </Button>
                   {selectedBooking.status !== 'Cancelled' && (
                     <Button
                       variant="outline"
@@ -970,7 +968,7 @@ const AllLabOrders = () => {
                     <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Confirmed">Confirmed</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+
                     <SelectItem value="Facing Error">Facing Error</SelectItem>
                     <SelectItem value="Rescheduled">Rescheduled</SelectItem>
                   </SelectContent>
@@ -1021,7 +1019,7 @@ const AllLabOrders = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="reschedule-time" className="mb-1.5 block">New Time</Label>
                   <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
@@ -1038,18 +1036,18 @@ const AllLabOrders = () => {
                   </Select>
                 </div>
               </div>
-              
+
               {selectedBooking.bookingType === 'Home' && (
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="update-address" 
+                    <Checkbox
+                      id="update-address"
                       checked={updateAddress}
                       onCheckedChange={(checked) => setUpdateAddress(checked === true)}
                     />
                     <Label htmlFor="update-address">Update address</Label>
                   </div>
-                  
+
                   {updateAddress && (
                     <div className="space-y-4 border rounded-md p-4">
                       <div>
@@ -1057,49 +1055,49 @@ const AllLabOrders = () => {
                         <Input
                           id="street"
                           value={addressForm.street}
-                          onChange={(e) => setAddressForm({...addressForm, street: e.target.value})}
+                          onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
                           placeholder="Enter street address"
                         />
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="city">City</Label>
                           <Input
                             id="city"
                             value={addressForm.city}
-                            onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                             placeholder="Enter city"
                           />
                         </div>
-                        
+
                         <div>
                           <Label htmlFor="state">State</Label>
                           <Input
                             id="state"
                             value={addressForm.state}
-                            onChange={(e) => setAddressForm({...addressForm, state: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                             placeholder="Enter state"
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="zipCode">Zip Code</Label>
                           <Input
                             id="zipCode"
                             value={addressForm.zipCode}
-                            onChange={(e) => setAddressForm({...addressForm, zipCode: e.target.value})}
+                            onChange={(e) => setAddressForm({ ...addressForm, zipCode: e.target.value })}
                             placeholder="Enter zip code"
                           />
                         </div>
-                        
+
                         <div>
                           <Label htmlFor="country">Country</Label>
-                          <Select 
-                            value={addressForm.country} 
-                            onValueChange={(value) => setAddressForm({...addressForm, country: value})}
+                          <Select
+                            value={addressForm.country}
+                            onValueChange={(value) => setAddressForm({ ...addressForm, country: value })}
                           >
                             <SelectTrigger id="country">
                               <SelectValue placeholder="Select country" />

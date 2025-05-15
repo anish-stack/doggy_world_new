@@ -14,6 +14,14 @@ const BookingphysioSchema = new mongoose.Schema({
     fcmToken: {
         type: String,
     },
+    rescheduledDate: {
+        type: Date,
+        default: null
+    },
+    rescheduledTime: {
+        type: String,
+        default: null
+    },
     date: {
         type: String,
         required: true
@@ -28,8 +36,8 @@ const BookingphysioSchema = new mongoose.Schema({
     },
     cancelledBy: {
         type: String,
-        enum: ['User', 'Admin'],
-        default: 'User'
+      
+       
     },
     status: {
         type: String,
@@ -54,9 +62,18 @@ const BookingphysioSchema = new mongoose.Schema({
         ref: 'Payment',
         required: true
     },
+    fcmToken: {
+        type: String,
+    },
     lastNotified: {
         type: Date
     },
+    rating: {
+        type: String,
+    },
+    review: {
+        type: String,
+    }
 
 }, { timestamps: true });
 

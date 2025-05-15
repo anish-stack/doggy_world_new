@@ -6,6 +6,7 @@ const AppError = require("../../utils/ApiError");
 const Address = require("../../models/AddressModel/AddressModel");
 const RazorpayUtils = require("../../utils/razorpayUtils");
 const PaymentSchema = require("../../models/PaymentSchema/PaymentSchema");
+const sendNotification = require("../../utils/sendNotification");
 
 const razorpayUtils = new RazorpayUtils(
     process.env.RAZORPAY_KEY_ID,
@@ -44,14 +45,25 @@ exports.makeBookingForCake = async (req, res, next) => {
         }
 
         // ✅ Validate required fields
-        if (!address || !designId || !flavourId || !quantityId || !pet_details || !deliveryType || !deliveryDate || !totalAmount) {
+        if (
+            !address ||
+            !designId ||
+            !flavourId ||
+            !quantityId ||
+            !pet_details ||
+            !deliveryType ||
+            !deliveryDate ||
+            !totalAmount
+        ) {
             return next(new AppError("Missing required booking fields.", 400));
         }
 
         // ✅ Validate cake flavour
         const checkFlavour = await CakeFlavours.findById(flavourId);
         if (!checkFlavour || !checkFlavour.isActive) {
-            return next(new AppError(`Booking not accepted for selected flavour.`, 400));
+            return next(
+                new AppError(`Booking not accepted for selected flavour.`, 400)
+            );
         }
 
         // ✅ Validate cake size
@@ -104,14 +116,14 @@ exports.makeBookingForCake = async (req, res, next) => {
             pet: pet_details,
             bookingStatus: "Pending",
             petNameOnCake: petName || undefined,
-            pickupDate: deliveryType === 'pickup' ? deliveryDate : null,
+            pickupDate: deliveryType === "pickup" ? deliveryDate : null,
             isPaid: false,
             couponApplied: couponId ? true : false,
             couponCode: couponCode || undefined,
             discountAmount: discount,
             subtotal: price,
             fcmToken,
-            deliveredDate: deliveryType === 'delivery' ? deliveryDate : null,
+            deliveredDate: deliveryType === "delivery" ? deliveryDate : null,
             taxAmount: tax,
             Same_Day_delivery,
             shippingFee: deliveryCharge,
@@ -129,13 +141,200 @@ exports.makeBookingForCake = async (req, res, next) => {
                 razorpayKey: process.env.RAZORPAY_KEY_ID,
                 amount: orderOptions.amount,
                 bookingId: newBooking._id,
-                booking:newBooking?.orderNumber,
-                currency: orderOptions.currency
-            }
-
+                booking: newBooking?.orderNumber,
+                currency: orderOptions.currency,
+            },
         });
     } catch (error) {
         console.error("Cake booking error:", error);
-        return next(new AppError("Something went wrong while booking the cake.", 500));
+        return next(
+            new AppError("Something went wrong while booking the cake.", 500)
+        );
+    }
+};
+
+exports.getAllCakeBooking = async (req, res) => {
+    try {
+        const Bookings = await CakeBooking.find()
+            .populate("cakeDesign", "name image")
+            .populate("cakeFlavor", "name")
+            .populate("size", "price weight")
+            .populate("clinic", "clinicName address")
+            .populate("pet", "petname petOwnertNumber petdob petbreed")
+            .populate("paymentDetails")
+            .populate("deliveryInfo");
+
+        if (!Bookings || Bookings.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No cake bookings found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "All cake bookings retrieved successfully.",
+            data: Bookings,
+        });
+
+    } catch (error) {
+        console.error("Error fetching cake bookings:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching cake bookings.",
+            error: error.message,
+        });
+    }
+};
+
+
+exports.getSingleCakeBooking = async (req, res) => {
+    try {
+        const { id } = req.query
+        const Bookings = await CakeBooking.findById(id)
+            .populate("cakeDesign", "name image")
+            .populate("cakeFlavor", "name")
+            .populate("size", "price weight")
+            .populate("clinic", "clinicName address")
+            .populate("pet", "petname petOwnertNumber petdob petbreed")
+            .populate("paymentDetails")
+            .populate("deliveryInfo");
+
+        if (!Bookings) {
+            return res.status(404).json({
+                success: false,
+                message: "No cake bookings found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "cake bookings retrieved successfully.",
+            data: Bookings,
+        });
+
+    } catch (error) {
+        console.error("Error fetching cake bookings:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching cake bookings.",
+            error: error.message,
+        });
+    }
+};
+
+
+exports.changeOrderStatus = async (req, res) => {
+    try {
+        const { id, status } = req.body;
+
+
+        if (!id || !status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Both "id" and "status" are required.',
+            });
+        }
+
+        const ValidStatus = ['Pending', 'Confirmed', 'Cancelled', 'Dispatched', 'Delivered'];
+
+
+        if (!ValidStatus.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status. Valid statuses are: ${ValidStatus.join(', ')}`,
+            });
+        }
+
+
+        const booking = await CakeBooking.findById(id);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cake booking not found.',
+            });
+        }
+
+        booking.orderStatus = status;
+
+        await booking.save();
+        if (booking.fcmToken) {
+            const title = `🎂 Cake Order ${status}`;
+            let body = '';
+
+            switch (status) {
+                case 'Confirmed':
+                    body = `Your cake order has been confirmed! 🍰 We'll start preparing your delicious cake.`;
+                    break;
+                case 'Dispatched':
+                    body = `Your cake is on its way! 🎁 Get ready to celebrate.`;
+                    break;
+                case 'Delivered':
+                    body = `Your cake has been delivered! 🎉 Hope you enjoy it!`;
+                    break;
+                case 'Cancelled':
+                    body = `We're sorry! Your cake order has been cancelled. If this was a mistake, please contact us.`;
+                    break;
+                default:
+                    body = `The status of your cake order has been updated to ${status}.`;
+                    break;
+            }
+
+            try {
+                await sendNotification(booking.fcmToken, title, body);
+            } catch (err) {
+                console.error('Error sending notification:', err);
+            }
+        }
+        return res.status(200).json({
+            success: true,
+            message: `Order status updated to "${status}".`,
+            updatedBooking: booking,
+        });
+
+    } catch (error) {
+        console.error("Error in changeOrderStatus:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while updating order status.',
+            error: error.message,
+        });
+    }
+};
+
+
+exports.deleteCakeOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or missing order ID.',
+            });
+        }
+
+
+        const deletedBooking = await CakeBooking.findByIdAndDelete(id);
+
+        if (!deletedBooking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cake order not found.',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Cake order deleted successfully.',
+            deletedBooking,
+        });
+    } catch (error) {
+        console.error('Error deleting cake order:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while deleting cake order.',
+        });
     }
 };

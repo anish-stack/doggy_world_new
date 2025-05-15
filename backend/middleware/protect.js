@@ -7,16 +7,15 @@ exports.isAuthenticated = async (req, res, next) => {
   try {
     let token;
 
-    // Get token from Authorization header
+
     if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
       token = req.headers.authorization.split(" ")[1];
     } 
-    // Or get from cookie
+
     else if (req.cookies && req.cookies._usertoken) {
       token = req.cookies._usertoken;
     }
-console.log(token)
-    // Check if token exists
+
     if (!token) {
       return next(
         new AppError("You are not logged in. Please login to access this resource", 401)

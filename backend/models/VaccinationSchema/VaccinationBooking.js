@@ -25,7 +25,7 @@ const VaccinationBookingSchema = new mongoose.Schema({
         ref: 'PetRegister',
         required: true
     },
-    fcmToken:{
+    fcmToken: {
         type: String,
     },
     selectedDate: {
@@ -34,6 +34,15 @@ const VaccinationBookingSchema = new mongoose.Schema({
     },
 
     selectedTime: {
+        type: String,
+
+    },
+    rescheduledDate: {
+        type: Date,
+
+    },
+
+    rescheduledTime: {
         type: String,
 
     },
@@ -82,7 +91,8 @@ const VaccinationBookingSchema = new mongoose.Schema({
         min: 0,
         max: 5,
         default: 0
-    }
+    },
+    review: String
 
 }, { timestamps: true });
 

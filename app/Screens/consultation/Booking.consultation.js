@@ -294,7 +294,8 @@ export default function BookingConsultation() {
             doctorId: selectedDoctor._id,
             period: selectedPeriod,
             date: selectedDate.fullDate,
-            time: selectedTime.label
+            time: selectedTime.label,
+            fcmToken,
         };
 
         try {

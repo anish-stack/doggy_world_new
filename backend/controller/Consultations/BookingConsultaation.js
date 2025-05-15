@@ -29,7 +29,7 @@ const razorpayUtils = new RazorpayUtils(
 
 exports.makeBookings = async (req, res) => {
   try {
-    const { type, id, user, doctorId, period, date, time } = req.body;
+    const { type, id, user, doctorId, period, date, time, fcmToken } = req.body;
 
     // Check if user exists
     const petExisting = await PetRegister.findOne({
@@ -125,6 +125,7 @@ exports.makeBookings = async (req, res) => {
       date: formattedDate,
       time,
       bookingRef,
+      fcmToken,
       status: 'Pending',
 
     });
@@ -648,7 +649,7 @@ exports.MakeABookingForlabTest = async (req, res) => {
     let existingBookings = await LabTestBooking.find({
       selectedDate,
       selectedTime,
-      status: { $nin: ['Cancelled', 'Rescheduled', 'Pending'] }
+      status: { $nin: ['Cancelled', 'Completed', 'Pending'] }
     });
 
     // Check if time slot is fully booked

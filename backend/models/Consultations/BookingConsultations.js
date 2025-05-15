@@ -78,10 +78,13 @@ const BookingConsultationSchema = new mongoose.Schema({
         ref: 'ConsultationDoctor',
         required: true
     },
+    fcmToken: {
+        type: String,
+    },
     Rating: {
         number: {
             type: Number,
-          
+
         },
         note: {
             type: String,

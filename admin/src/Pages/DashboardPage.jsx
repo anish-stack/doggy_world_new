@@ -85,6 +85,15 @@ import CreateLabTest from "@/screens/LabTest/LabTestProducts/CreateLabTest"
 import EditLabtest from "@/screens/LabTest/LabTestProducts/EditLabtest"
 import Settings from "@/screens/settings/Settings"
 import AllLabOrders from "@/Orders/LabOrders/AllLabOrders"
+import ConsultationBookings from "@/screens/consultation/Services/ConsultationBookings"
+import SingleConsultation from "@/screens/consultation/Services/SingleConulataion"
+import PhysiotherapyBookings from "@/screens/PhysioTherapy/Services/PhysiotherapyBookings"
+import SinglePhysio from "@/screens/PhysioTherapy/Services/SinglePhysio"
+import VaccineBookings from "@/screens/Vaccines/Services/VaccineBookings"
+import SingleVaccineBookings from "@/screens/Vaccines/Services/SingleVaccineBookings"
+import VaccineScheudeld from "@/screens/Vaccines/Services/VaccineScheudeld"
+import CakeOrders from "@/screens/Cakes/Orders/CakeOrders"
+import SingleCakeOrders from "@/screens/Cakes/Orders/SingleCakeOrders"
 
 
 const DashboardPage = () => {
@@ -164,7 +173,7 @@ const DashboardPage = () => {
       return false;
     }
 
-    if (user?.role ?  'admin':'admin') {
+    if (user?.role ? 'admin' : 'admin') {
       return true;
     }
 
@@ -547,6 +556,9 @@ const DashboardPage = () => {
             <Route path="/all-vaccination" element={hasAccess("/dashboard/all-vaccination") ? <AllVaccines /> : <AccessDenied />} />
             <Route path="/edit-vaccination-product/:id" element={hasAccess("/dashboard/edit-vaccination-product") ? <EditVaccines /> : <AccessDenied />} />
             <Route path="/create-vaccination-product" element={hasAccess("/dashboard/create-vaccination-product") ? <CreateVaccines /> : <AccessDenied />} />
+            <Route path="/vaccination-booking" element={hasAccess("/dashboard/vaccination-booking") ? <VaccineBookings /> : <AccessDenied />} />
+            <Route path="/vaccination-booking/:id" element={hasAccess("/dashboard/vaccination-booking/:id") ? <SingleVaccineBookings /> : <AccessDenied />} />
+            <Route path="/vaccination-booking/:id/make-schedules" element={hasAccess("/dashboard/vaccination-booking/:id/make-schedules") ? <VaccineScheudeld /> : <AccessDenied />} />
 
             {/* Cakes design  */}
             <Route path="/all-design" element={hasAccess("/dashboard/all-design") ? <AllDesign /> : <AccessDenied />} />
@@ -561,6 +573,13 @@ const DashboardPage = () => {
             {/* Physiotherapy */}
             <Route path="/physiotherapy" element={hasAccess("/dashboard/physiotherapy") ? <AllPhysioTherapy /> : <AccessDenied />} />
             <Route path="/create-physiotherapy" element={hasAccess("/dashboard/create-physiotherapy") ? <CreateAndEditPhysio /> : <AccessDenied />} />
+            <Route path="/physiotherapy-booking" element={hasAccess("/dashboard/physiotherapy-booking") ? <PhysiotherapyBookings /> : <AccessDenied />} />
+            <Route path="/physiotherapy-booking/:id" element={hasAccess("/dashboard/physiotherapy-booking/:id") ? <SinglePhysio /> : <AccessDenied />} />
+
+            {/* Cake orders */}
+            <Route path="/cake-order" element={hasAccess("/dashboard/cake-order") ? <CakeOrders /> : <AccessDenied />} />
+            <Route path="/cake-order/:id" element={hasAccess("/dashboard/cake-order/:id") ? <SingleCakeOrders /> : <AccessDenied />} />
+
 
             {/* Coupons */}
             <Route path="/coupons" element={hasAccess("/dashboard/coupons") ? <Coupon /> : <AccessDenied />} />
@@ -602,6 +621,8 @@ const DashboardPage = () => {
             {/* Consultation */}
             <Route path="/all-consultations" element={hasAccess("/dashboard/all-consultations") ? <AllConsultation /> : <AccessDenied />} />
             <Route path="/consultations-doctors" element={hasAccess("/dashboard/consultations-doctors") ? <AllConultationDoctor /> : <AccessDenied />} />
+            <Route path="/consultation-booking" element={hasAccess("/dashboard/consultation-booking") ? <ConsultationBookings /> : <AccessDenied />} />
+            <Route path="/consultations/:id" element={hasAccess("/dashboard/consultations/:id") ? <SingleConsultation /> : <AccessDenied />} />
 
             {/* Lab test */}
 

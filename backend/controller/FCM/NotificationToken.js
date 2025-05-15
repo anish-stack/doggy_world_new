@@ -3,10 +3,10 @@ const Notification = require("../../models/petAndAuth/NotificationSchema");
 const notificationController = {
     async registerToken(req, res) {
         try {
-            console.log(req.body)
+
             const { fcmToken, deviceId } = req.body;
 
-            const existingNotification = await Notification.findOne({ fcmtoken:fcmToken });
+            const existingNotification = await Notification.findOne({ fcmtoken: fcmToken });
 
             if (existingNotification) {
                 existingNotification.fcmTokenUpdateDate = new Date();
@@ -16,7 +16,7 @@ const notificationController = {
             }
 
             const newNotification = new Notification({
-                fcmtoken:fcmToken,
+                fcmtoken: fcmToken,
                 fcmTokenUpdateDate: new Date(),
                 deviceId
             });
