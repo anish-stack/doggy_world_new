@@ -34,7 +34,16 @@
     },
     "plugins": [
       "expo-secure-store",
-      "@react-native-firebase/app"
+      "@react-native-firebase/app",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "sounds": ["./local/assets/notification_sound.wav"],
+          "enableBackgroundRemoteNotifications": true
+        }
+      ]
     ]
   }
 }

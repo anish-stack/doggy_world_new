@@ -83,7 +83,9 @@ const petShopProductSchema = new mongoose.Schema({
             trim: true,
         }
     },
-
+    stock: {
+        type: Number,
+    },
     isCod: {
         type: Boolean,
         default: false,

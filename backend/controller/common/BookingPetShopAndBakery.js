@@ -7,6 +7,7 @@ const dayjs = require('dayjs');
 const Address = require("../../models/AddressModel/AddressModel");
 const RazorpayUtils = require("../../utils/razorpayUtils");
 const PaymentSchema = require("../../models/PaymentSchema/PaymentSchema");
+const sendNotification = require("../../utils/sendNotification");
 const razorpayUtils = new RazorpayUtils(
     process.env.RAZORPAY_KEY_ID,
     process.env.RAZORPAY_KEY_SECRET
@@ -211,13 +212,14 @@ exports.makeBookingForPetBakeryAndShop = async (req, res) => {
 exports.getBookingDetailsShopBooking = async (req, res) => {
     try {
         const { id } = req.params;
-console.log(id)
+        console.log(id)
+
         const findOrder = await BakeryAndShopBooking.findById(id)
             .populate('paymentDetails')
             .populate('items.itemId')
             .populate('petId')
             .populate('deliveryInfo');
-console.log(findOrder)
+
         if (!findOrder) {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
@@ -228,3 +230,281 @@ console.log(findOrder)
         return res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
+
+
+exports.getAllBookingDetailsShopBooking = async (req, res) => {
+    try {
+
+        const findOrder = await BakeryAndShopBooking.find()
+            .populate('petId', 'petname petOwnertNumber petbreed')
+            .populate('deliveryInfo', 'street city state zipCode country')
+            .populate('paymentDetails', 'razorpay_order_id amount payment_status createdAt razorpay_payment_id')
+            .populate('items.itemId').sort({ createdAt: 1 })
+
+        if (!findOrder) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        return res.status(200).json({ success: true, data: findOrder });
+    } catch (error) {
+        console.error("Error fetching booking details:", error);
+        return res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+
+exports.changeOrderStatusOrBakery = async (req, res) => {
+  try {
+    const { id, status } = req.body;
+
+    // Validate required fields
+    if (!id || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID and status are required"
+      });
+    }
+    
+    // Define valid status values
+    const validStatus = [
+      'Pending', 
+      'Confirmed', 
+      'Order Placed', 
+      'Packed', 
+      'Dispatched', 
+      'Out for Delivery', 
+      'Delivered', 
+      'Cancelled', 
+      'Returned'
+    ];
+    
+    // Validate status
+    if (!validStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Status must be one of: ${validStatus.join(', ')}`
+      });
+    }
+    
+    // Find order details with populated fields
+    const foundOrderDetails = await BakeryAndShopBooking.findById(id)
+      .populate('petId', 'petname petOwnertNumber petbreed')
+      .populate('deliveryInfo', 'street city state zipCode country')
+      .populate('paymentDetails', 'razorpay_order_id amount payment_status createdAt razorpay_payment_id')
+      .populate('items.itemId')
+      .sort({ createdAt: 1 });
+    
+    // Check if order exists
+    if (!foundOrderDetails) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+    
+    // Update order status
+    foundOrderDetails.status = status;
+    
+    // Handle different status updates
+    switch (status) {
+      case 'Pending':
+        // Just update status
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Status Update';
+          const body = 'Your order is now pending. We will process it shortly.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Confirmed':
+        // Update status and send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Confirmed';
+          const body = 'Your order has been confirmed. Thank you for your purchase!';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Order Placed':
+        // Update inventory for each item in the order
+        if (foundOrderDetails.items && foundOrderDetails.items.length > 0) {
+          for (let index = 0; index < foundOrderDetails.items.length; index++) {
+            const element = foundOrderDetails.items[index];
+            if (!element.itemId) continue; // Skip if item doesn't exist
+            
+            const hasVariantOrder = element.hasVariant ? true : false;
+            
+            if (hasVariantOrder) {
+              // Handle variant inventory update
+              const foundVariant = element.itemId.variants.find(i => 
+                i._id.toString() === element.variantId.toString()
+              );
+              
+              if (foundVariant) {
+                foundVariant.stock -= element.quantity;
+                // Ensure stock doesn't go negative
+                if (foundVariant.stock < 0) foundVariant.stock = 0;
+                await element.itemId.save();
+              }
+            } else {
+              // Handle regular item inventory update
+              element.itemId.stock -= element.quantity;
+              // Ensure stock doesn't go negative
+              if (element.itemId.stock < 0) element.itemId.stock = 0;
+              await element.itemId.save();
+            }
+          }
+        }
+        
+        // Send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Successfully Placed';
+          const body = 'Your order has been successfully placed and is being processed.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Packed':
+        // Update status and send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Packed';
+          const body = 'Your order has been packed and will be dispatched soon.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Dispatched':
+        // Update status and send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Dispatched';
+          const body = 'Your order has been dispatched and is on its way.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Out for Delivery':
+        // Update status and send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Out for Delivery';
+          const body = 'Your order is out for delivery and will reach you soon.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Delivered':
+        // Update status and send notification
+        foundOrderDetails.deliveredAt = new Date();
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Delivered';
+          const body = 'Your order has been delivered successfully. Thank you for shopping with us!';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Cancelled':
+        // Update status and restore inventory
+        if (foundOrderDetails.items && foundOrderDetails.items.length > 0) {
+          for (let index = 0; index < foundOrderDetails.items.length; index++) {
+            const element = foundOrderDetails.items[index];
+            if (!element.itemId) continue; // Skip if item doesn't exist
+            
+            const hasVariantOrder = element.hasVariant ? true : false;
+            
+            if (hasVariantOrder) {
+              // Handle variant inventory restore
+              const foundVariant = element.itemId.variants.find(i => 
+                i._id.toString() === element.variantId.toString()
+              );
+              
+              if (foundVariant) {
+                foundVariant.stock += element.quantity;
+                await element.itemId.save();
+              }
+            } else {
+              // Handle regular item inventory restore
+              element.itemId.stock += element.quantity;
+              await element.itemId.save();
+            }
+          }
+        }
+        
+        // Send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Cancelled';
+          const body = 'Your order has been cancelled. Please contact support if you need assistance.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      case 'Returned':
+        // Update status and restore inventory
+        if (foundOrderDetails.items && foundOrderDetails.items.length > 0) {
+          for (let index = 0; index < foundOrderDetails.items.length; index++) {
+            const element = foundOrderDetails.items[index];
+            if (!element.itemId) continue; // Skip if item doesn't exist
+            
+            const hasVariantOrder = element.hasVariant ? true : false;
+            
+            if (hasVariantOrder) {
+              // Handle variant inventory restore
+              const foundVariant = element.itemId.variants.find(i => 
+                i._id.toString() === element.variantId.toString()
+              );
+              
+              if (foundVariant) {
+                foundVariant.stock += element.quantity;
+                await element.itemId.save();
+              }
+            } else {
+              // Handle regular item inventory restore
+              element.itemId.stock += element.quantity;
+              await element.itemId.save();
+            }
+          }
+        }
+        
+        // Send notification
+        if (foundOrderDetails.fcmToken) {
+          const title = 'Order Returned';
+          const body = 'Your order return has been processed. Refund will be initiated shortly.';
+          await sendNotification(foundOrderDetails.fcmToken, title, body);
+        }
+        break;
+        
+      default:
+        // This shouldn't happen due to validation, but just in case
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status provided"
+        });
+    }
+    
+    // Save order with updated status
+    await foundOrderDetails.save();
+    
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: `Order status updated to ${status} successfully`,
+      data: foundOrderDetails
+    });
+    
+  } catch (error) {
+    console.error("Error in changeOrderStatus:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating order status",
+      error: error.message
+    });
+  }
+};
+
+
+exports.deletePetShopAndBakeryOrder = async(req,res)=>{
+  try {
+    
+  } catch (error) {
+    
+  }
+}

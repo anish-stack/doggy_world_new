@@ -549,3 +549,94 @@ exports.deleteBookingoflab = async (req, res) => {
     });
   }
 };
+
+
+exports.UpdateStatusBookingOfLabTest = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body;
+
+    // Validate ID
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing booking ID.',
+        code: 'INVALID_ID',
+      });
+    }
+
+    // Fetch booking by ID
+    const booking = await LabBooking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lab test booking not found.',
+        code: 'NOT_FOUND',
+      });
+    }
+
+    // Check if already in a final state
+    const finalStatuses = ['Cancelled', 'Completed', ];
+    if (finalStatuses.includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Booking already marked as '${booking.status}'. Cannot update.`,
+        code: 'ALREADY_FINALIZED',
+      });
+    }
+
+    // Update the status
+    booking.status = status;
+    await booking.save();
+
+
+    if (booking.fcmToken) {
+      const notificationData = {
+        title: `Lab Test Booking ${status}`,
+        body: `Your booking has been ${status}`,
+      };
+
+      try {
+        await sendNotification(booking.fcmToken, notificationData.title, notificationData?.body);
+        console.log('✅ FCM notification sent successfully.');
+      } catch (notificationError) {
+        console.error('❌ Failed to send FCM notification:', notificationError);
+      }
+      await sendNotification(booking.fcmToken, notificationData.title, notificationData?.body);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Booking status updated to '${status}' successfully.`,
+      data: booking,
+    });
+
+  } catch (error) {
+    console.error('❌ Error cancelling lab test booking:', error);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error occurred.',
+        errors: Object.values(error.errors).map(err => err.message),
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid format for ${error.path}.`,
+        code: 'CAST_ERROR',
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error.',
+      error: error.message,
+      code: 'SERVER_ERROR',
+    });
+  }
+};

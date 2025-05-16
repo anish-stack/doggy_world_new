@@ -8,6 +8,8 @@ const RazorpayUtils = require("../../utils/razorpayUtils");
 const PaymentSchema = require("../../models/PaymentSchema/PaymentSchema");
 const sendNotification = require("../../utils/sendNotification");
 
+
+const mongoose = require('mongoose')
 const razorpayUtils = new RazorpayUtils(
     process.env.RAZORPAY_KEY_ID,
     process.env.RAZORPAY_KEY_SECRET
@@ -162,7 +164,7 @@ exports.getAllCakeBooking = async (req, res) => {
             .populate("clinic", "clinicName address")
             .populate("pet", "petname petOwnertNumber petdob petbreed")
             .populate("paymentDetails")
-            .populate("deliveryInfo");
+            .populate("deliveryInfo").sort({ createdAt: -1 });
 
         if (!Bookings || Bookings.length === 0) {
             return res.status(404).json({
@@ -255,7 +257,7 @@ exports.changeOrderStatus = async (req, res) => {
             });
         }
 
-        booking.orderStatus = status;
+        booking.bookingStatus = status;
 
         await booking.save();
         if (booking.fcmToken) {
@@ -264,19 +266,19 @@ exports.changeOrderStatus = async (req, res) => {
 
             switch (status) {
                 case 'Confirmed':
-                    body = `Your cake order has been confirmed! 🍰 We'll start preparing your delicious cake.`;
+                    body = `Sweet news! 🍰 Your cake order is confirmed and baking magic has begun. We can’t wait for you to enjoy it!`;
                     break;
                 case 'Dispatched':
-                    body = `Your cake is on its way! 🎁 Get ready to celebrate.`;
+                    body = `Your cake has left the kitchen! 🚚💨 It’s on its way to deliver sweetness to your doorstep. Get ready to celebrate!`;
                     break;
                 case 'Delivered':
-                    body = `Your cake has been delivered! 🎉 Hope you enjoy it!`;
+                    body = `Delivery complete! 🎉 Your cake has arrived safe and sweet. We hope it brings a big smile and even bigger joy!`;
                     break;
                 case 'Cancelled':
-                    body = `We're sorry! Your cake order has been cancelled. If this was a mistake, please contact us.`;
+                    body = `Oh no! 😞 Your cake order has been cancelled. If this wasn’t intended or you need help, we’re here for you. 🍰`;
                     break;
                 default:
-                    body = `The status of your cake order has been updated to ${status}.`;
+                    body = `Heads up! 📦 Your cake order status is now "${status}". Stay tuned for more delicious updates!`;
                     break;
             }
 
@@ -286,6 +288,7 @@ exports.changeOrderStatus = async (req, res) => {
                 console.error('Error sending notification:', err);
             }
         }
+
         return res.status(200).json({
             success: true,
             message: `Order status updated to "${status}".`,

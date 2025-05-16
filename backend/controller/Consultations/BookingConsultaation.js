@@ -87,7 +87,7 @@ exports.makeBookings = async (req, res) => {
 
     // Create Razorpay payment order
     const paymentData = {
-      amount: price * 1000,
+      amount: price * 100,
       currency: 'INR',
       receipt: bookingRef,
       notes: {

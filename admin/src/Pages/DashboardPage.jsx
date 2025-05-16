@@ -94,6 +94,8 @@ import SingleVaccineBookings from "@/screens/Vaccines/Services/SingleVaccineBook
 import VaccineScheudeld from "@/screens/Vaccines/Services/VaccineScheudeld"
 import CakeOrders from "@/screens/Cakes/Orders/CakeOrders"
 import SingleCakeOrders from "@/screens/Cakes/Orders/SingleCakeOrders"
+import PetShopAndBakeryOrders from "@/screens/Pet Shop/CommonOrders/PetShopAndBakeryOrders"
+import SingleOrderDeatils from "@/screens/Pet Shop/CommonOrders/SingleOrderDeatils"
 
 
 const DashboardPage = () => {
@@ -207,7 +209,6 @@ const DashboardPage = () => {
       icon: <ShoppingBag className="h-5 w-5" />,
       items: [
         { to: "/dashboard/pet-shop-order", label: "Pet Shop Order" },
-        { to: "/dashboard/bakery-order", label: "Bakery Order" },
         { to: "/dashboard/cake-order", label: "Cake Order" },
       ],
     },
@@ -578,7 +579,7 @@ const DashboardPage = () => {
 
             {/* Cake orders */}
             <Route path="/cake-order" element={hasAccess("/dashboard/cake-order") ? <CakeOrders /> : <AccessDenied />} />
-            <Route path="/cake-order/:id" element={hasAccess("/dashboard/cake-order/:id") ? <SingleCakeOrders /> : <AccessDenied />} />
+            <Route path="/cake-order-view" element={hasAccess("/dashboard/cake-order-view") ? <SingleCakeOrders /> : <AccessDenied />} />
 
 
             {/* Coupons */}
@@ -590,6 +591,11 @@ const DashboardPage = () => {
             <Route path="/pet-shop-product" element={hasAccess("/dashboard/pet-shop-product") ? <PetShopProducts /> : <AccessDenied />} />
             <Route path="/create-and-edit-pet-shop-categories" element={hasAccess("/dashboard/create-and-edit-pet-shop-categories") ? <CreateAndEditProductShop /> : <AccessDenied />} />
 
+            {/* Pet Shop and Bakery */}
+            <Route path="/pet-shop-order" element={hasAccess("/dashboard/pet-shop-order") ? <PetShopAndBakeryOrders /> : <AccessDenied />} />
+            <Route path="/pet-shop-order/:id" element={hasAccess("/dashboard/pet-shop-order/:id") ? <SingleOrderDeatils /> : <AccessDenied />} />
+
+            {/*  */}
             {/* Doctors */}
             <Route path="/doctors" element={hasAccess("/dashboard/doctors") ? <Doctors /> : <AccessDenied />} />
 

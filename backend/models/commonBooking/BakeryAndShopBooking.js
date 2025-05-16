@@ -136,11 +136,14 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         trim: true,
         maxLength: 500
     },
+    deliveredAt: {
+        type: Date,
+    },
 
     // Order status
     status: {
         type: String,
-        enum: ['Pending', 'Confirmed', 'Processing', 'Packed', 'Dispatched', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
+        enum: ['Pending', 'Confirmed', 'Order Placed', 'Packed', 'Dispatched', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
         default: 'Pending'
     },
 
@@ -149,7 +152,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
         {
             status: {
                 type: String,
-                enum: ['Pending', 'Confirmed', 'Processing', 'Packed', 'Dispatched', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
+                enum: ['Pending', 'Confirmed', 'Order Placed', 'Packed', 'Dispatched', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned'],
                 required: true
             },
             timestamp: {

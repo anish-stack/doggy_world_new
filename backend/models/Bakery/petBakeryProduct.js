@@ -54,12 +54,12 @@ const petBakeryProductSchema = new mongoose.Schema({
         min: 0,
         max: 100,
     },
-    mainImage:{
-        url:{
+    mainImage: {
+        url: {
             type: String,
             trim: true,
         },
-        public_id:{
+        public_id: {
             type: String,
             trim: true,
         }
@@ -96,6 +96,9 @@ const petBakeryProductSchema = new mongoose.Schema({
     freshStock: {
         type: Boolean,
         default: true,
+    },
+    stock: {
+        type: Number,
     },
     flavour: {
         type: String,

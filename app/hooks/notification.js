@@ -14,6 +14,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -102,8 +104,9 @@ const showExpoNotification = async (title, body, data = {}) => {
       title,
       body,
       data,
+      sound:'notification_sound.wav'
     },
-    trigger: null, // Show immediately
+    trigger: { seconds: 2 },
   });
 };
 

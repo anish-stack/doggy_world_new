@@ -160,11 +160,7 @@ const AllLabOrders = () => {
   // Handle update status
   const handleUpdateStatus = async () => {
     if (!newStatus) {
-      toast({
-        title: "Error",
-        description: "Please select a status",
-        variant: "destructive"
-      });
+      toast.error('Please select a status');
       return;
     }
 
@@ -174,19 +170,13 @@ const AllLabOrders = () => {
         status: newStatus
       });
 
-      toast({
-        title: "Status Updated",
-        description: `Booking status updated to ${newStatus}`,
-      });
+      toast.success(`Booking status updated to ${newStatus}`);
 
       setUpdateStatusOpen(false);
       fetchBookings();
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update status",
-        variant: "destructive"
-      });
+       toast.success(err?.response?.data?.message)
+     
     } finally {
       setIsSubmitting(false);
     }
