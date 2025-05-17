@@ -1,42 +1,142 @@
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  Image, 
-  RefreshControl, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  RefreshControl,
   ActivityIndicator,
   Alert
 } from 'react-native';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { getUser } from '../../../hooks/getUserHook';
 import TopHeadPart from '../../../layouts/TopHeadPart';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import axios from 'axios';
+import { API_END_POINT_URL_LOCAL } from '../../../constant/constant';
+import { useToken } from '../../../hooks/useToken';
 
 export default function Lab() {
   const navigation = useNavigation();
-  const { orderData, getUserFnc, loading, error } = getUser();
-  const [labData, setLabData] = useState([]);
+  const { isLoggedIn, token } = useToken();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filterType, setFilterType] = useState("all");
 
-  useEffect(() => {
-    if (orderData) {
-      setLabData(orderData?.labVaccinations || []);
+  // Combined data for lab tests and vaccinations
+  const [bookingsData, setBookingsData] = useState([]);
+
+  const fetchData = async () => {
+
+    setError(null);
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+    }, 4000);
+
+    try {
+      const response = await axios.get(
+        `${API_END_POINT_URL_LOCAL}/api/v1/lab-and-vaccine-my-booking`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Process lab bookings
+        const labBookings = response.data.data.labBookings
+          .filter(booking => booking._id) // Filter out empty objects
+          .map(booking => ({
+            id: booking._id,
+            documentId: booking.bookingRef || booking._id,
+            Booking_Date: booking.selectedDate,
+            Time_Of_Test: booking.selectedTime,
+            Total_Price: booking.labTests[0]?.price || 0,
+            Total_Discount: booking.couponDiscount || 0,
+            Payable_Amount: booking.totalPayableAmount || 0,
+            is_order_complete: booking.status === "Completed",
+            isBookingCancel: booking.status === "Cancelled",
+            cancel_reason: booking.cancelReason,
+            bookingType: "lab",
+            Test: booking.labTests.map(test => ({
+              Test_Name: test.title,
+              Type_Of_Test: "Lab Test"
+            })),
+            clinic: {
+              clinic_name: booking.clinic?.clinicName || "Home Visit"
+            },
+            auth: {
+              petName: booking.pet?.petname
+            },
+            createdAt: booking?.createdAt,
+            originalData: booking // Store original data for details view
+          }));
+
+        // Process vaccination bookings
+        const vaccineBookings = response.data.data.vaccinationBookings
+          .filter(booking => booking._id) // Filter out empty objects
+          .map(booking => ({
+            id: booking._id,
+            documentId: booking.bookingRef || booking._id,
+            Booking_Date: booking.selectedDate,
+            Time_Of_Test: booking.selectedTime,
+            Total_Price: booking.vaccine?.price || 0,
+            Total_Discount: booking.couponDiscount || 0,
+            Payable_Amount: booking.totalPayableAmount || 0,
+            is_order_complete: booking.status === "Completed",
+            isBookingCancel: booking.status === "Cancelled",
+            cancel_reason: booking.cancelReason,
+            bookingType: "vaccine",
+            Test: [{
+              Test_Name: booking.vaccine?.title || "Vaccination",
+              Type_Of_Test: "Vaccination"
+            }],
+            clinic: {
+              clinic_name: booking.clinic?.clinicName || "Home Visit"
+            },
+            auth: {
+              petName: booking.pet?.petname
+            },
+            createdAt: booking?.createdAt,
+            originalData: booking // Store original data for details view 
+          }));
+
+        // Combine and sort by date (newest first)
+        const combinedBookings = [...labBookings, ...vaccineBookings].sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        setBookingsData(combinedBookings);
+      } else {
+        setError("Failed to load bookings data");
+      }
+    } catch (err) {
+      console.log("Error fetching data:", err);
+      setError(err.response?.data?.message || "Network error. Please try again later.");
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
-  }, [orderData]);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchData();
+    }
+  }, [isLoggedIn, token]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      getUserFnc();
+    fetchData().finally(() => {
       setRefreshing(false);
-    }, 1500);
-  }, [getUserFnc]);
+    });
+  }, []);
 
   const formatDate = useCallback((dateString) => {
     const options = { year: "numeric", month: "short", day: "numeric" };
@@ -63,9 +163,12 @@ export default function Lab() {
   }, []);
 
   const handleCancelBooking = useCallback((item) => {
+    // Extract the booking type from the item
+    const bookingType = item.bookingType === "lab" ? "lab test" : "vaccination";
+
     Alert.alert(
       "Cancel Booking",
-      "Are you sure you want to cancel this lab test/vaccination?",
+      `Are you sure you want to cancel this ${bookingType}?`,
       [
         {
           text: "No",
@@ -74,17 +177,46 @@ export default function Lab() {
         {
           text: "Yes, Cancel",
           style: "destructive",
-          onPress: () => {
-            // Add your cancel booking API call here
-            Alert.alert("Success", "Your lab test/vaccination has been cancelled successfully.");
+          onPress: async () => {
+            try {
+              setLoading(true);
+              // Implement cancel API call based on booking type
+              const endpoint = item.bookingType === "lab"
+                ? `${API_END_POINT_URL_LOCAL}/api/v1/lab-booking/cancel/${item.id}`
+                : `${API_END_POINT_URL_LOCAL}/api/v1/vaccination-booking/cancel/${item.id}`;
+
+              await axios.post(endpoint,
+                { reason: "Cancelled by user" },
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`
+                  }
+                }
+              );
+
+              Alert.alert("Success", `Your ${bookingType} has been cancelled successfully.`);
+              // Refresh data after cancellation
+              fetchData();
+            } catch (err) {
+              console.log("Error cancelling booking:", err);
+              Alert.alert(
+                "Error",
+                err.response?.data?.message || "Failed to cancel booking. Please try again."
+              );
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
     );
-  }, []);
+  }, [token]);
 
   const handleViewDetails = useCallback((item) => {
-    navigation.navigate('ViewLabDetails', { labBooking: item });
+    console.log(item.bookingType)
+    // Navigate to appropriate detail screen based on booking type
+    const screenName = item.bookingType === "lab" ? 'ViewLabDetails' : 'ViewVaccineDetails';
+    navigation.navigate(screenName, { booking: item.originalData });
   }, [navigation]);
 
   const handleSupport = useCallback(() => {
@@ -107,19 +239,19 @@ export default function Lab() {
     );
   }, []);
 
-  const filteredLabData = useMemo(() => {
-    if (filterType === "all") return labData;
-    
-    return labData.filter(booking => {
+  const filteredBookings = useMemo(() => {
+    if (filterType === "all") return bookingsData;
+
+    return bookingsData.filter(booking => {
       const status = getStatus(booking);
       return status === filterType;
     });
-  }, [labData, filterType, getStatus]);
+  }, [bookingsData, filterType, getStatus]);
 
   const renderFilterButton = useCallback((title, type) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
-        styles.filterButton, 
+        styles.filterButton,
         filterType === type && styles.activeFilterButton
       ]}
       onPress={() => setFilterType(type)}
@@ -135,15 +267,15 @@ export default function Lab() {
 
   const renderEmptyState = useCallback(() => (
     <View style={styles.emptyContainer}>
-      <Image 
-        source={require('../../../assets/empty.png')} 
+      <Image
+        source={require('../../../assets/empty.png')}
         style={styles.emptyImage}
       />
       <Text style={styles.emptyTitle}>No Lab Tests or Vaccinations</Text>
       <Text style={styles.emptyText}>
         You haven't booked any lab tests or vaccinations yet. When you do, they will appear here.
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.bookNowButton}
         onPress={() => navigation.navigate('LabServices')}
       >
@@ -152,16 +284,17 @@ export default function Lab() {
     </View>
   ), [navigation]);
 
-  const renderLabItem = useCallback(({ item }) => {
+  const renderBookingItem = useCallback(({ item }) => {
     const status = getStatus(item);
     const statusColor = getStatusColor(status);
-    
+
     // Get the first test name for display
     const firstTestName = item.Test && item.Test.length > 0 ? item.Test[0].Test_Name : "Lab Test";
     const additionalTestsCount = item.Test ? item.Test.length - 1 : 0;
-    
+    const bookingType = item.bookingType === "lab" ? "Lab Test" : "Vaccination";
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.labCard}
         onPress={() => handleViewDetails(item)}
         activeOpacity={0.9}
@@ -173,18 +306,18 @@ export default function Lab() {
               {additionalTestsCount > 0 && ` +${additionalTestsCount} more`}
             </Text>
             <View style={[
-              styles.statusBadge, 
+              styles.statusBadge,
               { backgroundColor: statusColor + '20' }
             ]}>
               <Text style={[
-                styles.statusText, 
+                styles.statusText,
                 { color: statusColor }
               ]}>
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Text>
             </View>
           </View>
-          <Text style={styles.bookingId}>Booking ID: {item.documentId.substring(0, 10)}...</Text>
+          <Text style={styles.bookingId}>Booking ID: {item.documentId}</Text>
         </View>
 
         <View style={styles.cardDivider} />
@@ -200,8 +333,7 @@ export default function Lab() {
             <MaterialIcons name="medical-services" size={16} color="#666" />
             <Text style={styles.detailLabel}>Type:</Text>
             <Text style={styles.detailValue}>
-              {item.Test && item.Test.length > 0 && item.Test[0].Type_Of_Test ? 
-                item.Test[0].Type_Of_Test : "Lab Test/Vaccination"}
+              {bookingType}
             </Text>
           </View>
 
@@ -219,7 +351,7 @@ export default function Lab() {
 
           <View style={styles.detailRow}>
             <MaterialIcons name="location-on" size={16} color="#666" />
-            <Text style={styles.detailLabel}>Clinic:</Text>
+            <Text style={styles.detailLabel}>Location:</Text>
             <Text style={styles.detailValue}>{item.clinic?.clinic_name}</Text>
           </View>
 
@@ -249,7 +381,7 @@ export default function Lab() {
         </View>
 
         <View style={styles.cardFooter}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.viewDetailsButton}
             onPress={() => handleViewDetails(item)}
           >
@@ -257,7 +389,7 @@ export default function Lab() {
           </TouchableOpacity>
 
           {status === "pending" ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => handleCancelBooking(item)}
             >
@@ -275,6 +407,7 @@ export default function Lab() {
     );
   }, [formatDate, getStatus, getStatusColor, handleCancelBooking, handleViewDetails]);
 
+  // Loading state
   if (loading && !refreshing) {
     return (
       <View style={styles.container}>
@@ -287,6 +420,7 @@ export default function Lab() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <View style={styles.container}>
@@ -295,9 +429,9 @@ export default function Lab() {
           <MaterialIcons name="error-outline" size={60} color="#ef4444" />
           <Text style={styles.errorTitle}>Oops!</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
-            onPress={getUserFnc}
+            onPress={fetchData}
           >
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
@@ -306,6 +440,7 @@ export default function Lab() {
     );
   }
 
+  // Main content
   return (
     <View style={styles.container}>
       <TopHeadPart title='Lab Tests & Vaccinations' />
@@ -318,8 +453,8 @@ export default function Lab() {
       </View>
 
       <FlatList
-        data={filteredLabData}
-        renderItem={renderLabItem}
+        data={filteredBookings}
+        renderItem={renderBookingItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -334,7 +469,7 @@ export default function Lab() {
         ListEmptyComponent={renderEmptyState}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.supportButton}
         onPress={handleSupport}
       >

@@ -64,7 +64,7 @@ const DashboardHome = () => {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await axios.get(`${API_URL}/flush-cache`)
+      await axios.get(`${API_URL}`)
       await mutate() // Revalidate the data
     } catch (error) {
       console.error("Error refreshing data:", error)

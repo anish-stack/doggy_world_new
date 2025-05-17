@@ -73,6 +73,7 @@ exports.SingleBookingOfVaccination = async (req, res) => {
                 }
             })
             .populate('vaccine',)
+            .populate('clinic','clinicName address email phone openTime closeTime mapLocation')
             .populate('nextScheduledVaccination')
             .populate('Address')
             .populate('payment');

@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   View,
   Text,
@@ -15,6 +13,7 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  Linking,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -22,25 +21,24 @@ import axios from "axios"
 import { format } from "date-fns"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { API_END_POINT_URL_LOCAL } from "../../../constant/constant"
-import { useToken } from "../../../hooks/useToken"
-import { Ionicons, MaterialCommunityIcons, FontAwesome5, AntDesign, Feather } from "@expo/vector-icons"
+import { Ionicons, MaterialCommunityIcons, FontAwesome5, AntDesign, Feather, MaterialIcons } from "@expo/vector-icons"
 
 const { width } = Dimensions.get("window")
 
-export default function ViewDetailsOfPhysios({ route, navigation }) {
-  const { bookingId } = route.params || {}
-  const { token } = useToken()
-
+export default function ViewVaccineDetails({ navigation, route }) {
+  const { booking } = route.params || {}
   const [bookingDetails, setBookingDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Modal states
+  // Bottom sheet states
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [nextVaccinationOpen, setNextVaccinationOpen] = useState(false)
+  const [reportViewOpen, setReportViewOpen] = useState(false)
 
   // Reschedule states
   const [rescheduleDate, setRescheduleDate] = useState(null)
@@ -53,37 +51,48 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
   const [reviewText, setReviewText] = useState("")
   const [reviewLoading, setReviewLoading] = useState(false)
 
-  // Fetch booking details
+  // Next vaccination states
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedTime, setSelectedTime] = useState("")
+  const [selectedVaccines, setSelectedVaccines] = useState([])
+  const [selectedStatus, setSelectedStatus] = useState("Pending")
+  const [selectedNotes, setSelectedNotes] = useState("")
+  const [currentEditItem, setCurrentEditItem] = useState(null)
+  const [showNextDatePicker, setShowNextDatePicker] = useState(false)
+  const [showNextTimePicker, setShowNextTimePicker] = useState(false)
+
+  // Fetch vaccination booking details
   const fetchBookingDetails = useCallback(async () => {
-    if (!bookingId || !token) return
+    if (!booking?._id) return
 
     setLoading(true)
     try {
-      const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/get-single-order-physio?id=${bookingId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/single-vaccine-orders?id=${booking?._id}`)
 
       if (response.data.success) {
         setBookingDetails(response.data.data)
-
-        // Initialize review state if exists
-        if (response.data.data.rating) {
-          setRatingValue(Number.parseInt(response.data.data.rating))
-          setReviewText(response.data.data.review || "")
+        
+        // If there's a next scheduled vaccination, set the initial values
+        if (response.data.data.nextScheduledVaccination?.schedule?.length > 0) {
+          const nextSchedule = response.data.data.nextScheduledVaccination.schedule[0]
+          setCurrentEditItem(nextSchedule)
+          setSelectedDate(new Date(nextSchedule.date))
+          setSelectedTime(nextSchedule.time)
+          setSelectedVaccines([nextSchedule.vaccines])
+          setSelectedStatus(nextSchedule.status)
+          setSelectedNotes(nextSchedule.notes || "")
         }
       } else {
         setError("Failed to fetch booking details")
       }
     } catch (error) {
-      console.log("Error fetching booking details:", error)
+      console.log("Error fetching vaccination details:", error)
       setError(error.message || "An error occurred while fetching data")
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [bookingId, token])
+  }, [booking])
 
   useEffect(() => {
     fetchBookingDetails()
@@ -102,24 +111,18 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
     setIsSubmitting(true)
     try {
       const response = await axios.put(
-        `${API_END_POINT_URL_LOCAL}/api/v1/cancel-order-of-physio?id=${bookingDetails._id}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        `${API_END_POINT_URL_LOCAL}/api/v1/cancel-vaccine-orders?id=${bookingDetails._id}&status=Cancelled`
       )
 
       if (response.data.success) {
-        Alert.alert("Success", "Your physiotherapy session has been cancelled successfully")
+        Alert.alert("Booking Cancelled", "Vaccination booking has been cancelled successfully")
         setCancelConfirmOpen(false)
         fetchBookingDetails()
       } else {
-        Alert.alert("Error", response.data.message || "Failed to cancel booking")
+        Alert.alert("Error", "Failed to cancel booking")
       }
     } catch (err) {
-      Alert.alert("Error", err?.response?.data?.message || "Failed to cancel booking")
+      Alert.alert("Error", err.response?.data?.message || "Failed to cancel booking")
     } finally {
       setIsSubmitting(false)
     }
@@ -144,27 +147,26 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
       const formattedDate = format(rescheduleDate, "yyyy-MM-dd")
 
       const payload = {
-        id: bookingDetails._id,
         rescheduledDate: formattedDate,
         rescheduledTime: rescheduleTime,
+        status: "Rescheduled",
       }
 
-      const response = await axios.put(`${API_END_POINT_URL_LOCAL}/api/v1/reschedule-order-physio`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const response = await axios.put(
+        `${API_END_POINT_URL_LOCAL}/api/v1/reschedule-vaccine-orders?id=${bookingDetails._id}&type=reschedule`,
+        payload
+      )
 
       if (response.data.success) {
-        Alert.alert("Success", "Your physiotherapy session has been rescheduled successfully")
+        Alert.alert("Booking Rescheduled", "Your vaccination has been rescheduled successfully")
         setRescheduleOpen(false)
         fetchBookingDetails()
       } else {
-        Alert.alert("Error", response.data.message || "Failed to reschedule booking")
+        Alert.alert("Error", "Failed to reschedule booking")
       }
     } catch (err) {
       console.log(err)
-      Alert.alert("Error", err?.response?.data?.message || "Failed to reschedule booking")
+      Alert.alert("Error", err.response?.data?.message || "Failed to reschedule booking")
     } finally {
       setIsSubmitting(false)
     }
@@ -179,36 +181,67 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
 
     setReviewLoading(true)
     try {
-      const payload = {
+      // Submit review to API
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/add-review`, {
         id: bookingDetails._id,
-        rating: ratingValue.toString(),
+        rating: ratingValue,
         review: reviewText,
-      }
-
-      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/update-physio-review`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       })
 
       if (response.data.success) {
-        Alert.alert("Success", "Your review has been submitted successfully")
+        Alert.alert("Success", "Review submitted successfully")
         setReviewOpen(false)
         fetchBookingDetails()
       } else {
         throw new Error(response.data.message || "Failed to submit review")
       }
     } catch (err) {
-      Alert.alert("Error", err?.response?.data?.message || "Failed to submit review")
+      Alert.alert("Error", err.response?.data?.message || "Failed to submit review")
     } finally {
       setReviewLoading(false)
     }
   }
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A"
-    return format(new Date(dateString), "MMMM d, yyyy")
+  // Handle update next vaccination schedule
+  const handleUpdateSchedule = async () => {
+    if (!currentEditItem) return
+
+    if (selectedVaccines.length === 0) {
+      Alert.alert("Error", "Please select at least one vaccine")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const updateData = {
+        whichOrderId: bookingDetails._id,
+        action: "update",
+        scheduleId: bookingDetails.nextScheduledVaccination._id,
+        scheduleItemId: currentEditItem._id,
+        updatedScheduleItem: {
+          date: selectedDate.toISOString(),
+          time: selectedTime,
+          vaccines: selectedVaccines[0], // Assuming we're using the first selected vaccine
+          status: selectedStatus,
+          notes: selectedNotes,
+        },
+      }
+
+      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/add-scheduled`, updateData)
+
+      if (response.data.success) {
+        Alert.alert("Success", "Schedule item updated successfully")
+        setNextVaccinationOpen(false)
+        fetchBookingDetails()
+      } else {
+        throw new Error(response.data.message || "Failed to update schedule")
+      }
+    } catch (error) {
+      Alert.alert("Error", error.message || "Failed to update schedule")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Format price
@@ -218,6 +251,12 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(price)
+  }
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A"
+    return format(new Date(dateString), "PPP")
   }
 
   // Handle date change for reschedule
@@ -240,16 +279,47 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
     }
   }
 
+  // Handle date change for next vaccination
+  const onNextDateChange = (event, date) => {
+    setShowNextDatePicker(false)
+    if (date) {
+      setSelectedDate(date)
+    }
+  }
+
+  // Handle time selection for next vaccination
+  const onNextTimeChange = (event, time) => {
+    setShowNextTimePicker(false)
+    if (time) {
+      const hours = time.getHours()
+      const minutes = time.getMinutes()
+      const formattedHours = hours < 10 ? `0${hours}` : hours
+      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes
+      setSelectedTime(`${formattedHours}:${formattedMinutes}`)
+    }
+  }
+
   // Toggle modals
   const toggleCancelSheet = () => setCancelConfirmOpen(!cancelConfirmOpen)
   const toggleRescheduleSheet = () => setRescheduleOpen(!rescheduleOpen)
   const toggleReviewSheet = () => setReviewOpen(!reviewOpen)
+  const toggleNextVaccinationSheet = () => setNextVaccinationOpen(!nextVaccinationOpen)
+  const toggleReportViewSheet = () => setReportViewOpen(!reportViewOpen)
+
+  // Open report URL
+  const openReportUrl = (url) => {
+    if (url) {
+      Linking.openURL(url).catch((err) => {
+        Alert.alert("Error", "Could not open the report. Please try again later.")
+      })
+    }
+  }
 
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#8b5cf6" />
-        <Text style={styles.loadingText}>Loading booking details...</Text>
+        <Text style={styles.loadingText}>Loading vaccination details...</Text>
       </View>
     )
   }
@@ -275,7 +345,7 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Physiotherapy Details</Text>
+        <Text style={styles.headerTitle}>Vaccination Details</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -292,11 +362,9 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
                 ? styles.confirmedStatus
                 : bookingDetails?.status === "Cancelled"
                   ? styles.cancelledStatus
-                  : bookingDetails?.status === "Completed"
-                    ? styles.completedStatus
-                    : bookingDetails?.status === "Rescheduled"
-                      ? styles.rescheduledStatus
-                      : styles.defaultStatus,
+                  : bookingDetails?.status === "Rescheduled"
+                    ? styles.rescheduledStatus
+                    : styles.defaultStatus,
             ]}
           >
             <Text
@@ -315,23 +383,41 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
           <Text style={styles.bookingRef}>Ref: {bookingDetails?.bookingRef}</Text>
         </View>
 
-        {/* Physio Card */}
-        {bookingDetails?.physio && (
-          <View style={styles.physioCard}>
-            {bookingDetails.physio.imageUrl && bookingDetails.physio.imageUrl.length > 0 && (
+        {/* Vaccine Card */}
+        {bookingDetails?.vaccine && (
+          <View style={styles.vaccineCard}>
+            {bookingDetails.vaccine.mainImage?.url && (
               <Image
-                source={{ uri: bookingDetails.physio.imageUrl[0].url }}
-                style={styles.physioImage}
+                source={{ uri: bookingDetails.vaccine.mainImage.url }}
+                style={styles.vaccineImage}
                 resizeMode="cover"
               />
             )}
-            <View style={styles.physioInfo}>
-              <Text style={styles.physioTitle}>{bookingDetails.physio.title}</Text>
-              <Text style={styles.physioDesc}>{bookingDetails.physio.smallDesc}</Text>
+            <View style={styles.vaccineInfo}>
+              <View style={styles.vaccineHeader}>
+                <Text style={styles.vaccineTitle}>{bookingDetails.vaccine.title}</Text>
+                {bookingDetails.vaccine.tag && (
+                  <View style={styles.tagBadge}>
+                    <Text style={styles.tagText}>{bookingDetails.vaccine.tag}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.vaccineDesc}>{bookingDetails.vaccine.small_desc}</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.discountPrice}>{formatPrice(bookingDetails.physio.discountPrice)}</Text>
-                <Text style={styles.originalPrice}>{formatPrice(bookingDetails.physio.price)}</Text>
-                <Text style={styles.sessionDuration}>({bookingDetails.physio.priceMinute})</Text>
+                <Text style={styles.discountPrice}>
+                  {formatPrice(
+                    bookingDetails.bookingType === "Home"
+                      ? bookingDetails.vaccine.home_price_of_package_discount
+                      : bookingDetails.vaccine.discount_price
+                  )}
+                </Text>
+                <Text style={styles.originalPrice}>
+                  {formatPrice(
+                    bookingDetails.bookingType === "Home"
+                      ? bookingDetails.vaccine.home_price_of_package
+                      : bookingDetails.vaccine.price
+                  )}
+                </Text>
               </View>
             </View>
           </View>
@@ -392,7 +478,7 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
               <Text style={styles.detailValue}>
                 {bookingDetails?.rescheduledDate
                   ? formatDate(bookingDetails.rescheduledDate)
-                  : formatDate(bookingDetails?.date)}
+                  : formatDate(bookingDetails?.selectedDate)}
               </Text>
             </View>
           </View>
@@ -403,9 +489,130 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
             </View>
             <View style={styles.detailTextContainer}>
               <Text style={styles.detailLabel}>Appointment Time</Text>
-              <Text style={styles.detailValue}>{bookingDetails?.rescheduledTime || bookingDetails?.time || "N/A"}</Text>
+              <Text style={styles.detailValue}>
+                {bookingDetails?.rescheduledTime || bookingDetails?.selectedTime || "N/A"} (
+                {bookingDetails?.bookingPart || "N/A"})
+              </Text>
             </View>
           </View>
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <FontAwesome5 name="clinic-medical" size={18} color="#8b5cf6" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Booking Type</Text>
+              <Text style={styles.detailValue}>{bookingDetails?.bookingType || "N/A"}</Text>
+            </View>
+          </View>
+
+          {bookingDetails?.bookingType === "Clinic" && bookingDetails?.clinic && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="location" size={20} color="#8b5cf6" />
+              </View>
+              <View style={styles.detailTextContainer}>
+                <Text style={styles.detailLabel}>Clinic</Text>
+                <Text style={styles.detailValue}>{bookingDetails.clinic.clinicName}</Text>
+                <Text style={styles.detailSubValue}>
+                  <Ionicons name="map-outline" size={14} color="#8b5cf6" /> {bookingDetails.clinic.address}
+                </Text>
+                <Text style={styles.detailSubValue}>
+                  <Ionicons name="call-outline" size={14} color="#8b5cf6" /> {bookingDetails.clinic.phone}
+                </Text>
+                <Text style={styles.detailSubValue}>
+                  <Ionicons name="time-outline" size={14} color="#8b5cf6" /> {bookingDetails.clinic.openTime} -{" "}
+                  {bookingDetails.clinic.closeTime}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Next Scheduled Vaccination */}
+        <View style={styles.detailsCard}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="event-repeat" size={24} color="#8b5cf6" />
+            <Text style={styles.sectionTitle}>Next Scheduled Vaccination</Text>
+          </View>
+
+          {bookingDetails?.nextScheduledVaccination?.schedule?.length > 0 ? (
+            <>
+              {bookingDetails.nextScheduledVaccination.schedule.map((item, index) => (
+                <View key={index} style={styles.nextVaccinationItem}>
+                  <View style={styles.nextVaccinationHeader}>
+                    <View
+                      style={[
+                        styles.nextVaccinationStatus,
+                        item.status === "Completed"
+                          ? styles.completedStatus
+                          : item.status === "Cancelled"
+                            ? styles.cancelledNextStatus
+                            : styles.pendingStatus,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.nextVaccinationStatusText,
+                          item.status === "Completed"
+                            ? styles.completedStatusText
+                            : item.status === "Cancelled"
+                              ? styles.cancelledNextStatusText
+                              : styles.pendingStatusText,
+                        ]}
+                      >
+                        {item.status}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => {
+                        setCurrentEditItem(item)
+                        setSelectedDate(new Date(item.date))
+                        setSelectedTime(item.time)
+                        setSelectedVaccines([item.vaccines])
+                        setSelectedStatus(item.status)
+                        setSelectedNotes(item.notes || "")
+                        setNextVaccinationOpen(true)
+                      }}
+                    >
+                      <Feather name="edit-2" size={16} color="#8b5cf6" />
+                      <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.nextVaccinationDetails}>
+                    <View style={styles.nextVaccinationDetail}>
+                      <Ionicons name="calendar-outline" size={16} color="#8b5cf6" />
+                      <Text style={styles.nextVaccinationText}>{formatDate(item.date)}</Text>
+                    </View>
+
+                    <View style={styles.nextVaccinationDetail}>
+                      <Ionicons name="time-outline" size={16} color="#8b5cf6" />
+                      <Text style={styles.nextVaccinationText}>{item.time || "N/A"}</Text>
+                    </View>
+
+                    <View style={styles.nextVaccinationDetail}>
+                      <MaterialCommunityIcons name="needle" size={16} color="#8b5cf6" />
+                      <Text style={styles.nextVaccinationText}>{item.vaccines}</Text>
+                    </View>
+
+                    {item.notes && (
+                      <View style={styles.nextVaccinationDetail}>
+                        <Ionicons name="document-text-outline" size={16} color="#8b5cf6" />
+                        <Text style={styles.nextVaccinationText}>{item.notes}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={styles.noScheduleContainer}>
+              <MaterialIcons name="event-busy" size={48} color="#d1d5db" />
+              <Text style={styles.noScheduleText}>No upcoming vaccinations scheduled</Text>
+            </View>
+          )}
         </View>
 
         {/* Payment Details */}
@@ -427,29 +634,35 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
                   bookingDetails?.paymentComplete ? styles.paidStatus : styles.unpaidStatus,
                 ]}
               >
-                <Text style={styles.paymentStatusText}>{bookingDetails?.paymentComplete ? "Paid" : "Unpaid"}</Text>
+                <Text style={styles.paymentStatusText}>
+                  {bookingDetails?.paymentComplete ? "Paid" : "Unpaid"}
+                </Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <FontAwesome5 name="money-bill-wave" size={18} color="#8b5cf6" />
-            </View>
-            <View style={styles.detailTextContainer}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValue}>{bookingDetails?.paymentCollectionType || "N/A"}</Text>
-            </View>
-          </View>
-
-          {bookingDetails?.paymentDetails?.razorpay_payment_id && (
+          {bookingDetails?.payment?.razorpay_payment_id && (
             <View style={styles.detailRow}>
               <View style={styles.detailIconContainer}>
                 <FontAwesome5 name="receipt" size={18} color="#8b5cf6" />
               </View>
               <View style={styles.detailTextContainer}>
                 <Text style={styles.detailLabel}>Payment ID</Text>
-                <Text style={styles.detailValue}>{bookingDetails.paymentDetails.razorpay_payment_id}</Text>
+                <Text style={styles.detailValue}>{bookingDetails.payment.razorpay_payment_id}</Text>
+              </View>
+            </View>
+          )}
+
+          {bookingDetails?.couponCode && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="pricetag" size={20} color="#8b5cf6" />
+              </View>
+              <View style={styles.detailTextContainer}>
+                <Text style={styles.detailLabel}>Coupon Applied</Text>
+                <Text style={styles.detailValue}>
+                  {bookingDetails.couponCode} (₹{bookingDetails.couponDiscount} off)
+                </Text>
               </View>
             </View>
           )}
@@ -460,19 +673,37 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
             </View>
             <View style={styles.detailTextContainer}>
               <Text style={styles.detailLabel}>Total Amount</Text>
-              <Text style={styles.totalAmount}>{formatPrice(bookingDetails?.paymentDetails?.amount / 100 || 0)}</Text>
+              <Text style={styles.totalAmount}>{formatPrice(bookingDetails?.totalPayableAmount || 0)}</Text>
             </View>
           </View>
         </View>
+
+        {/* Report Section (if available) */}
+        {bookingDetails?.ReportId && (
+          <View style={styles.detailsCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="document-text" size={24} color="#8b5cf6" />
+              <Text style={styles.sectionTitle}>Vaccination Report</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.reportButton}
+              onPress={() => openReportUrl(bookingDetails.ReportId)}
+            >
+              <Ionicons name="document-text-outline" size={24} color="#fff" />
+              <Text style={styles.reportButtonText}>View Report</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Rating Section */}
         <View style={styles.detailsCard}>
           <View style={styles.cardHeader}>
             <Ionicons name="star" size={24} color="#8b5cf6" />
-            <Text style={styles.sectionTitle}>Your Review</Text>
+            <Text style={styles.sectionTitle}>Rate Your Experience</Text>
           </View>
 
-          {bookingDetails?.rating ? (
+          {bookingDetails?.hasRated ? (
             <View style={styles.ratingContainer}>
               <Text style={styles.ratingText}>Thank you for your feedback!</Text>
               <View style={styles.starsContainer}>
@@ -481,37 +712,21 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
                     key={star}
                     name="star"
                     size={24}
-                    color={star <= Number.parseInt(bookingDetails.rating) ? "#f59e0b" : "#d1d5db"}
+                    color={star <= bookingDetails.bookingRating ? "#f59e0b" : "#d1d5db"}
                   />
                 ))}
               </View>
-              {bookingDetails.review && (
-                <View style={styles.reviewTextContainer}>
-                  <Text style={styles.reviewTextLabel}>Your comment:</Text>
-                  <Text style={styles.reviewTextContent}>"{bookingDetails.review}"</Text>
-                </View>
-              )}
-              <TouchableOpacity style={styles.editReviewButton} onPress={toggleReviewSheet}>
-                <Feather name="edit-2" size={16} color="#8b5cf6" />
-                <Text style={styles.editReviewText}>Edit Review</Text>
-              </TouchableOpacity>
             </View>
-          ) : bookingDetails?.status === "Completed" ? (
+          ) : (
             <TouchableOpacity style={styles.rateButton} onPress={toggleReviewSheet}>
               <Ionicons name="star-outline" size={24} color="#fff" />
               <Text style={styles.rateButtonText}>Rate Now</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={styles.noReviewContainer}>
-              <Text style={styles.noReviewText}>
-                You can leave a review once your physiotherapy session is completed.
-              </Text>
-            </View>
           )}
         </View>
 
         {/* Action Buttons */}
-        {(bookingDetails?.status !== 'Cancelled' && bookingDetails?.status !== 'Rescheduled') && (
+        {bookingDetails?.status === "Confirmed" && (
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity style={[styles.actionButton, styles.rescheduleButton]} onPress={toggleRescheduleSheet}>
               <Ionicons name="calendar" size={20} color="#fff" />
@@ -541,7 +756,7 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
             </View>
 
             <Text style={styles.modalMessage}>
-              Are you sure you want to cancel this physiotherapy session? This action cannot be undone.
+              Are you sure you want to cancel this vaccination booking? This action cannot be undone.
             </Text>
 
             <View style={styles.modalButtons}>
@@ -574,19 +789,19 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reschedule Session</Text>
+              <Text style={styles.modalTitle}>Reschedule Booking</Text>
               <TouchableOpacity onPress={toggleRescheduleSheet}>
                 <AntDesign name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalMessage}>Please select a new date and time for your physiotherapy session.</Text>
+            <Text style={styles.modalMessage}>Please select a new date and time for your vaccination.</Text>
 
             <View style={styles.formContainer}>
               <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
                 <Ionicons name="calendar" size={20} color="#8b5cf6" />
                 <Text style={styles.datePickerButtonText}>
-                  {rescheduleDate ? format(rescheduleDate, "MMMM d, yyyy") : "Select Date"}
+                  {rescheduleDate ? format(rescheduleDate, "PPP") : "Select Date"}
                 </Text>
               </TouchableOpacity>
 
@@ -651,7 +866,7 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalMessage}>How was your physiotherapy experience?</Text>
+            <Text style={styles.modalMessage}>How was your vaccination experience?</Text>
 
             <View style={styles.ratingStarsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -693,6 +908,80 @@ export default function ViewDetailsOfPhysios({ route, navigation }) {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.modalConfirmButtonText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Next Vaccination Edit Modal */}
+      <Modal visible={nextVaccinationOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Next Vaccination</Text>
+              <TouchableOpacity onPress={toggleNextVaccinationSheet}>
+                <AntDesign name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalMessage}>Update your next vaccination schedule</Text>
+
+            <View style={styles.formContainer}>
+              <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowNextDatePicker(true)}>
+                <Ionicons name="calendar" size={20} color="#8b5cf6" />
+                <Text style={styles.datePickerButtonText}>
+                  {selectedDate ? format(selectedDate, "PPP") : "Select Date"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowNextTimePicker(true)}>
+                <Ionicons name="time" size={20} color="#8b5cf6" />
+                <Text style={styles.datePickerButtonText}>{selectedTime ? selectedTime : "Select Time"}</Text>
+              </TouchableOpacity>
+
+        
+
+            </View>
+
+            {showNextDatePicker && (
+              <DateTimePicker
+                value={selectedDate || new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onNextDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+
+            {showNextTimePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onNextTimeChange}
+              />
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={toggleNextVaccinationSheet}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirmButton]}
+                onPress={handleUpdateSchedule}
+                disabled={isSubmitting || !selectedDate || !selectedTime}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmButtonText}>Update</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -792,9 +1081,6 @@ const styles = StyleSheet.create({
   confirmedStatus: {
     backgroundColor: "rgba(16, 185, 129, 0.1)",
   },
-  completedStatus: {
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-  },
   cancelledStatus: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
   },
@@ -821,7 +1107,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
   },
-  physioCard: {
+  vaccineCard: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
     marginTop: 16,
@@ -833,20 +1119,37 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  physioImage: {
+  vaccineImage: {
     width: "100%",
     height: 180,
   },
-  physioInfo: {
+  vaccineInfo: {
     padding: 16,
   },
-  physioTitle: {
+  vaccineHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  vaccineTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 8,
+    flex: 1,
   },
-  physioDesc: {
+  tagBadge: {
+    backgroundColor: "#8b5cf6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  tagText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  vaccineDesc: {
     fontSize: 14,
     color: "#4b5563",
     marginBottom: 12,
@@ -866,11 +1169,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9ca3af",
     textDecorationLine: "line-through",
-    marginRight: 8,
-  },
-  sessionDuration: {
-    fontSize: 14,
-    color: "#6b7280",
   },
   detailsCard: {
     backgroundColor: "#fff",
@@ -940,6 +1238,85 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontWeight: "500",
   },
+  detailSubValue: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  nextVaccinationItem: {
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  nextVaccinationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  nextVaccinationStatus: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  pendingStatus: {
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
+  },
+  completedStatus: {
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+  },
+  cancelledNextStatus: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+  },
+  nextVaccinationStatusText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  pendingStatusText: {
+    color: "#f59e0b",
+  },
+  completedStatusText: {
+    color: "#10b981",
+  },
+  cancelledNextStatusText: {
+    color: "#ef4444",
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 6,
+  },
+  editButtonText: {
+    fontSize: 14,
+    color: "#8b5cf6",
+    marginLeft: 4,
+  },
+  nextVaccinationDetails: {
+    gap: 8,
+  },
+  nextVaccinationDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  nextVaccinationText: {
+    fontSize: 14,
+    color: "#4b5563",
+    marginLeft: 8,
+  },
+  noScheduleContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  noScheduleText: {
+    fontSize: 16,
+    color: "#6b7280",
+    marginTop: 12,
+    textAlign: "center",
+  },
   paymentStatusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -963,11 +1340,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#8b5cf6",
   },
+  reportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#8b5cf6",
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  reportButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 8,
+  },
   ratingContainer: {
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
+    padding: 12,
   },
   ratingText: {
     fontSize: 16,
@@ -976,35 +1365,6 @@ const styles = StyleSheet.create({
   },
   starsContainer: {
     flexDirection: "row",
-    marginBottom: 16,
-  },
-  reviewTextContainer: {
-    width: "100%",
-    marginBottom: 16,
-  },
-  reviewTextLabel: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginBottom: 4,
-  },
-  reviewTextContent: {
-    fontSize: 16,
-    color: "#111827",
-    fontStyle: "italic",
-  },
-  editReviewButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 8,
-  },
-  editReviewText: {
-    color: "#8b5cf6",
-    fontWeight: "600",
-    fontSize: 14,
-    marginLeft: 6,
   },
   rateButton: {
     flexDirection: "row",
@@ -1019,17 +1379,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
-  },
-  noReviewContainer: {
-    padding: 16,
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  noReviewText: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
   },
   actionButtonsContainer: {
     flexDirection: "row",
@@ -1155,6 +1504,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111827",
     marginBottom: 20,
+    textAlignVertical: "top",
+  },
+  statusSelector: {
+    marginBottom: 12,
+  },
+  statusLabel: {
+    fontSize: 16,
+    color: "#111827",
+    marginBottom: 8,
+  },
+  statusOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statusOption: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    marginHorizontal: 4,
+  },
+  selectedStatusOption: {
+    backgroundColor: "#8b5cf6",
+  },
+  statusOptionText: {
+    fontSize: 14,
+    color: "#4b5563",
+  },
+  selectedStatusOptionText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  notesInput: {
+    backgroundColor: "#f3f4f6",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: "#111827",
+    marginTop: 12,
     textAlignVertical: "top",
   },
 })

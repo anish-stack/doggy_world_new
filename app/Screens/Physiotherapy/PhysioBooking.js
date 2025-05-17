@@ -63,10 +63,10 @@ export default function PhysioBooking() {
 
     // Get physiotherapy booking settings
     const physioSettings = settings?.physiotherapyBookingTimes || []
-    console.log("physioSettings", physioSettings)
+ 
 
     useEffect(() => {
-        // Calculate initial total amount
+        
         const price = service?.discountPrice || service?.price || 0
         setTotalAmount(price)
     }, [service])

@@ -1,866 +1,912 @@
-"use client"
-
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator,
+  RefreshControl,
   Image,
   Alert,
-  ActivityIndicator,
-  Linking,
-} from "react-native"
-import { useState, useMemo, useCallback } from "react"
-import { useNavigation, useRoute } from "@react-navigation/native"
-import TopHeadPart from "../../../layouts/TopHeadPart"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+  Platform,
+  Dimensions
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import axios from 'axios';
+import { format } from 'date-fns';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { API_END_POINT_URL_LOCAL } from '../../../constant/constant';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5, AntDesign } from '@expo/vector-icons';
 
-export default function ViewLabDetails() {
-  const navigation = useNavigation()
-  const route = useRoute()
-  const { labBooking } = route.params
-  const [loading, setLoading] = useState(false)
+const { width } = Dimensions.get('window');
 
-  const formatDate = useCallback((dateString) => {
-    const options = { year: "numeric", month: "long", day: "numeric" }
-    return new Date(dateString).toLocaleDateString(undefined, options)
-  }, [])
+export default function ViewLabDetails({ navigation, route }) {
+  const { booking } = route.params || {};
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Bottom sheet states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  
+  // Reschedule states
+  const [rescheduleDate, setRescheduleDate] = useState(null);
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  
+  // Selected booking for actions
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  
+  // Bottom sheet refs
+  const cancelSheetRef = useRef(null);
+  const rescheduleSheetRef = useRef(null);
 
-  const getStatus = useMemo(() => {
-    if (labBooking.isBookingCancel) return "cancelled"
-    if (labBooking.is_order_complete) return "completed"
-    return "pending"
-  }, [labBooking])
-
-  const getStatusColor = useMemo(() => {
-    switch (getStatus.toLowerCase()) {
-      case "pending":
-        return "#f59e0b"
-      case "completed":
-        return "#10b981"
-      case "cancelled":
-        return "#ef4444"
-      default:
-        return "#6b7280"
+  // Fetch lab booking details
+  const fetchLabBookingDetails = useCallback(async () => {
+    if (!booking?._id) return;
+    
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `${API_END_POINT_URL_LOCAL}/api/v1/lab-booking?id=${booking?._id}`
+      );
+      
+      if (response.data.success) {
+        setBookingDetails(response.data.data.booking);
+        setSelectedBooking(response.data.data.booking);
+      } else {
+        setError("Failed to fetch booking details");
+      }
+    } catch (error) {
+      console.log("Error fetching lab details:", error);
+      setError(error.message || "An error occurred while fetching data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [getStatus])
+  }, [booking]);
 
-  const handleCancelBooking = useCallback(() => {
-    Alert.alert("Cancel Booking", "Are you sure you want to cancel this lab test/vaccination?", [
-      {
-        text: "No",
-        style: "cancel",
-      },
-      {
-        text: "Yes, Cancel",
-        style: "destructive",
-        onPress: () => {
-          setLoading(true)
-          // Simulate API call
-          setTimeout(() => {
-            setLoading(false)
-            Alert.alert("Booking Cancelled", "Your lab test/vaccination has been cancelled successfully.", [
-              {
-                text: "OK",
-                onPress: () => navigation.goBack(),
-              },
-            ])
-          }, 1500)
-        },
-      },
-    ])
-  }, [navigation])
+  useEffect(() => {
+    fetchLabBookingDetails();
+  }, [fetchLabBookingDetails]);
 
-  const handleCall = useCallback(() => {
-    if (labBooking.clinic?.contact_details) {
-      Alert.alert("Contact Clinic", "Would you like to call the clinic?", [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Call",
-          onPress: () => Linking.openURL(`tel:${labBooking.clinic.contact_details}`),
-        },
-      ])
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchLabBookingDetails();
+  }, [fetchLabBookingDetails]);
+
+  // Handle cancel booking
+  const handleCancelBooking = async () => {
+    if (!selectedBooking?._id) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await axios.put(
+        `${API_END_POINT_URL_LOCAL}/api/v1/lab-booking-cancel?id=${selectedBooking._id}&status=Cancelled`
+      );
+      
+      if (response.data.success) {
+        Alert.alert(
+          "Booking Cancelled",
+          "Lab test booking has been cancelled successfully"
+        );
+        setCancelConfirmOpen(false);
+        fetchLabBookingDetails();
+      } else {
+        Alert.alert("Error", "Failed to cancel booking");
+      }
+    } catch (err) {
+      Alert.alert("Error", err.response.data.message || "Failed to cancel booking");
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [labBooking])
+  };
 
-  const handleViewLocation = useCallback(() => {
-    if (labBooking.clinic?.Map_Location) {
-      Linking.openURL(labBooking.clinic.Map_Location)
+  // Handle reschedule
+  const handleReschedule = async () => {
+    if (!selectedBooking?._id) return;
+    
+    if (!rescheduleDate) {
+      Alert.alert("Error", "Please select a date");
+      return;
     }
-  }, [labBooking])
 
-  const handleSupport = useCallback(() => {
-    Alert.alert("Contact Support", "Would you like to contact our support team?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Yes, Contact Support",
-        onPress: () => {
-          // Add your support contact logic here
-          Alert.alert("Support", "Our support team will contact you shortly.")
-        },
-      },
-    ])
-  }, [])
+    if (!rescheduleTime) {
+      Alert.alert("Error", "Please select a time");
+      return;
+    }
 
-  const totalSavings = useMemo(() => {
-    return Number.parseFloat(labBooking.Total_Discount || 0)
-  }, [labBooking])
+    setIsSubmitting(true);
+    try {
+      const formattedDate = format(rescheduleDate, 'yyyy-MM-dd');
 
-  const totalAmount = useMemo(() => {
-    return Number.parseFloat(labBooking.Total_Price || 0)
-  }, [labBooking])
+      const payload = {
+        rescheduledDate: formattedDate,
+        rescheduledTime: rescheduleTime,
+        status: "Rescheduled"
+      };
 
-  const payableAmount = useMemo(() => {
-    return Number.parseFloat(labBooking.Payable_Amount || 0)
-  }, [labBooking])
+      const response = await axios.put(
+        `${API_END_POINT_URL_LOCAL}/api/v1/lab-tests-booking-reschedule?id=${selectedBooking._id}&type=reschedule`, 
+        payload
+      );
+
+      if (response.data.success) {
+        Alert.alert(
+          "Booking Rescheduled",
+          "Your lab test has been rescheduled successfully"
+        );
+        setRescheduleOpen(false);
+        fetchLabBookingDetails();
+      } else {
+        Alert.alert("Error", "Failed to reschedule booking");
+      }
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", err.response.data.message || "Failed to reschedule booking");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Format price
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return format(new Date(dateString), 'PPP');
+  };
+
+  // Handle date change
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setRescheduleDate(selectedDate);
+    }
+  };
+
+  // Handle time selection
+  const onTimeChange = (event, selectedTime) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      const hours = selectedTime.getHours();
+      const minutes = selectedTime.getMinutes();
+      const formattedHours = hours < 10 ? `0${hours}` : hours;
+      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+      setRescheduleTime(`${formattedHours}:${formattedMinutes}`);
+    }
+  };
+
+  // Toggle bottom sheets
+  const toggleCancelSheet = () => {
+    setCancelConfirmOpen(!cancelConfirmOpen);
+  };
+
+  const toggleRescheduleSheet = () => {
+    setRescheduleOpen(!rescheduleOpen);
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Loading booking details...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle" size={60} color="#ef4444" />
+        <Text style={styles.errorText}>Error: {error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchLabBookingDetails}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Processing your request...</Text>
-        </View>
-      )}
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Lab Test Details</Text>
+        <View style={styles.placeholder} />
+      </View>
 
-      <TopHeadPart title="Booking Details" />
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Status Banner */}
-        <View style={[styles.statusBanner, { backgroundColor: getStatusColor + "15" }]}>
-          <View style={styles.statusIconContainer}>
-            <MaterialCommunityIcons
-              name={
-                getStatus === "completed"
-                  ? "check-circle"
-                  : getStatus === "cancelled"
-                    ? "close-circle"
-                    : "clock-outline"
-              }
-              size={24}
-              color={getStatusColor}
-            />
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Status Badge */}
+        <View style={styles.statusContainer}>
+          <View style={[
+            styles.statusBadge, 
+            bookingDetails?.status === 'Confirmed' ? styles.confirmedStatus : 
+            bookingDetails?.status === 'Cancelled' ? styles.cancelledStatus : 
+            bookingDetails?.status === 'Rescheduled' ? styles.rescheduledStatus : 
+            styles.defaultStatus
+          ]}>
+            <Text style={styles.statusText}>{bookingDetails?.status || 'Processing'}</Text>
           </View>
-          <View style={styles.statusTextContainer}>
-            <Text style={[styles.statusTitle, { color: getStatusColor }]}>
-              {getStatus.charAt(0).toUpperCase() + getStatus.slice(1)}
-            </Text>
-            <Text style={styles.statusDescription}>
-              {getStatus === "pending"
-                ? "Your booking is confirmed"
-                : getStatus === "completed"
-                  ? "Your tests/vaccinations have been completed"
-                  : "Your booking has been cancelled"}
-            </Text>
-          </View>
+          <Text style={styles.bookingRef}>Ref: {bookingDetails?.bookingRef}</Text>
         </View>
 
-        {/* Booking Info */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Booking Information</Text>
-          <View style={styles.detailsCard}>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="confirmation-number" size={16} color="#666" />
-              <Text style={styles.detailLabel}>Booking ID:</Text>
-              <Text style={styles.detailValue}>{labBooking.documentId}</Text>
+        {/* Lab Test Card */}
+        {bookingDetails?.labTests?.map((test, index) => (
+          <View key={index} style={styles.testCard}>
+            {test.mainImage?.url && (
+              <Image 
+                source={{ uri: test.mainImage.url }} 
+                style={styles.testImage} 
+                resizeMode="cover"
+              />
+            )}
+            <View style={styles.testInfo}>
+              <Text style={styles.testTitle}>{test.title}</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.discountPrice}>
+                  {formatPrice(bookingDetails.bookingType === 'Home' 
+                    ? test.home_price_of_package_discount 
+                    : test.discount_price)}
+                </Text>
+                <Text style={styles.originalPrice}>
+                  {formatPrice(bookingDetails.bookingType === 'Home' 
+                    ? test.home_price_of_package 
+                    : test.price)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.detailRow}>
-              <FontAwesome name="calendar" size={16} color="#666" />
-              <Text style={styles.detailLabel}>Date:</Text>
-              <Text style={styles.detailValue}>{formatDate(labBooking.Booking_Date)}</Text>
+          </View>
+        ))}
+
+        {/* Booking Details */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Booking Details</Text>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="calendar" size={20} color="#6366f1" />
             </View>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="access-time" size={16} color="#666" />
-              <Text style={styles.detailLabel}>Time:</Text>
-              <Text style={styles.detailValue}>{labBooking.Time_Of_Test}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <FontAwesome name="calendar-check-o" size={16} color="#666" />
-              <Text style={styles.detailLabel}>Booked On:</Text>
-              <Text style={styles.detailValue}>{formatDate(labBooking.createdAt)}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="notifications" size={16} color="#666" />
-              <Text style={styles.detailLabel}>Notification:</Text>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Appointment Date</Text>
               <Text style={styles.detailValue}>
-                {labBooking.whatsapp_notification_done ? "WhatsApp notification sent" : "No notification sent"}
+                {bookingDetails?.rescheduledDate 
+                  ? formatDate(bookingDetails.rescheduledDate) 
+                  : formatDate(bookingDetails?.selectedDate)}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="time" size={20} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Appointment Time</Text>
+              <Text style={styles.detailValue}>
+                {bookingDetails?.rescheduledTime || bookingDetails?.selectedTime || 'N/A'} 
+                ({bookingDetails?.bookingPart || 'N/A'})
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <MaterialCommunityIcons name="dog" size={20} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Pet</Text>
+              <Text style={styles.detailValue}>{bookingDetails?.pet?.petname || 'N/A'}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="call" size={20} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Contact</Text>
+              <Text style={styles.detailValue}>{bookingDetails?.pet?.petOwnertNumber || 'N/A'}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <FontAwesome5 name="clinic-medical" size={18} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Booking Type</Text>
+              <Text style={styles.detailValue}>{bookingDetails?.bookingType || 'N/A'}</Text>
+            </View>
+          </View>
+          
+          {bookingDetails?.bookingType === 'Clinic' && bookingDetails?.clinic && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="location" size={20} color="#6366f1" />
+              </View>
+              <View style={styles.detailTextContainer}>
+                <Text style={styles.detailLabel}>Clinic</Text>
+                <Text style={styles.detailValue}>
+                  {bookingDetails.clinic.clinicName}
+                </Text>
+                <Text style={styles.detailSubValue}>
+                  {bookingDetails.clinic.address}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Payment Details */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Payment Details</Text>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="card" size={20} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Payment Status</Text>
+              <View style={[
+                styles.paymentStatusBadge, 
+                bookingDetails?.payment?.payment_status === 'paid' ? styles.paidStatus : styles.unpaidStatus
+              ]}>
+                <Text style={styles.paymentStatusText}>
+                  {bookingDetails?.payment?.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <FontAwesome5 name="receipt" size={18} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Payment ID</Text>
+              <Text style={styles.detailValue}>
+                {bookingDetails?.payment?.razorpay_payment_id || 'N/A'}
+              </Text>
+            </View>
+          </View>
+          
+          {bookingDetails?.couponCode && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="pricetag" size={20} color="#6366f1" />
+              </View>
+              <View style={styles.detailTextContainer}>
+                <Text style={styles.detailLabel}>Coupon Applied</Text>
+                <Text style={styles.detailValue}>
+                  {bookingDetails.couponCode} (₹{bookingDetails.couponDiscount} off)
+                </Text>
+              </View>
+            </View>
+          )}
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <FontAwesome5 name="money-bill-wave" size={18} color="#6366f1" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.detailLabel}>Total Amount</Text>
+              <Text style={styles.totalAmount}>
+                {formatPrice(bookingDetails?.totalPayableAmount || 0)}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Pet Information */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Pet Information</Text>
-          <View style={styles.petCard}>
-            <View style={styles.petImageContainer}>
-              {/* <Image source={require("../../../assets/pet-placeholder.png")} style={styles.petImage} /> */}
-            </View>
-            <View style={styles.petInfo}>
-              <Text style={styles.petName}>{labBooking.auth?.petName || "Pet"}</Text>
-
-              <View style={styles.petDetailRow}>
-                <MaterialCommunityIcons name="dog" size={16} color="#666" />
-                <Text style={styles.petDetailLabel}>Type:</Text>
-                <Text style={styles.petDetailValue}>{labBooking.auth?.PetType || "Not specified"}</Text>
-              </View>
-
-              <View style={styles.petDetailRow}>
-                <MaterialCommunityIcons name="dog-side" size={16} color="#666" />
-                <Text style={styles.petDetailLabel}>Breed:</Text>
-                <Text style={styles.petDetailValue}>{labBooking.auth?.Breed || "Not specified"}</Text>
-              </View>
-
-              <View style={styles.petDetailRow}>
-                <MaterialIcons name="cake" size={16} color="#666" />
-                <Text style={styles.petDetailLabel}>Age:</Text>
-                <Text style={styles.petDetailValue}>{labBooking.auth?.Age || "Not specified"}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Tests/Vaccinations */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Tests & Vaccinations</Text>
-          {labBooking.Test && labBooking.Test.length > 0 ? (
-            labBooking.Test.map((test, index) => (
-              <View key={index} style={styles.testCard}>
-                <View style={styles.testHeader}>
-                  <Text style={styles.testName}>{test.Test_Name}</Text>
-                  {test.Is_Ultarasound && (
-                    <View style={styles.ultrasoundBadge}>
-                      <Text style={styles.ultrasoundText}>Ultrasound</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.testDetails}>
-                  <View style={styles.testDetailRow}>
-                    <Text style={styles.testDetailLabel}>Type:</Text>
-                    <Text style={styles.testDetailValue}>{test.Type_Of_Test || "Standard"}</Text>
-                  </View>
-
-                  <View style={styles.testPriceContainer}>
-                    <View style={styles.testPriceRow}>
-                      <Text style={styles.testPriceLabel}>Original Price:</Text>
-                      <Text style={styles.testOriginalPrice}>₹{test.Test_Price}</Text>
-                    </View>
-
-                    <View style={styles.testPriceRow}>
-                      <Text style={styles.testPriceLabel}>Discounted Price:</Text>
-                      <Text style={styles.testDiscountPrice}>₹{test.Discount_Price}</Text>
-                    </View>
-
-                    <View style={styles.testPriceRow}>
-                      <Text style={styles.testPriceLabel}>You Save:</Text>
-                      <Text style={styles.testSavings}>
-                        ₹{Number.parseFloat(test.Test_Price) - Number.parseFloat(test.Discount_Price)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.noTestsContainer}>
-              <MaterialIcons name="error-outline" size={24} color="#666" />
-              <Text style={styles.noTestsText}>No tests or vaccinations found</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Clinic Information */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Clinic Information</Text>
-          <View style={styles.clinicCard}>
-            <Text style={styles.clinicName}>{labBooking.clinic?.clinic_name}</Text>
-            <Text style={styles.clinicAddress}>{labBooking.clinic?.Address}</Text>
-            <Text style={styles.clinicHours}>{labBooking.clinic?.time}</Text>
-
-            <View style={styles.clinicRatingContainer}>
-              <MaterialIcons name="star" size={16} color="#f59e0b" />
-              <Text style={styles.clinicRating}>{labBooking.clinic?.Rating || "4.5"}</Text>
-            </View>
-
-            <View style={styles.clinicButtonsContainer}>
-              <TouchableOpacity style={styles.clinicButton} onPress={handleCall}>
-                <MaterialIcons name="phone" size={16} color="#4F46E5" />
-                <Text style={styles.clinicButtonText}>Call</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.clinicButton} onPress={handleViewLocation}>
-                <MaterialIcons name="location-on" size={16} color="#4F46E5" />
-                <Text style={styles.clinicButtonText}>View Location</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Offer Information */}
-        {labBooking.offer && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Applied Offer</Text>
-            <View style={styles.offerCard}>
-              <View style={styles.offerHeader}>
-                <MaterialIcons name="local-offer" size={20} color="#4F46E5" />
-                <Text style={styles.offerCode}>{labBooking.offer.Code}</Text>
-              </View>
-
-              <Text style={styles.offerDescription}>{labBooking.offer.desc}</Text>
-
-              <View style={styles.offerDetails}>
-                <View style={styles.offerDetailRow}>
-                  <Text style={styles.offerDetailLabel}>Minimum Amount:</Text>
-                  <Text style={styles.offerDetailValue}>₹{labBooking.offer.minimum_amount}</Text>
-                </View>
-
-                <View style={styles.offerDetailRow}>
-                  <Text style={styles.offerDetailLabel}>Maximum Discount:</Text>
-                  <Text style={styles.offerDetailValue}>₹{labBooking.offer.upto_off}</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.viewTermsButton}
-                onPress={() =>
-                  Alert.alert(
-                    "Terms & Conditions",
-                    labBooking.offer.TermAndCondition || "Standard terms and conditions apply.",
-                  )
-                }
-              >
-                <Text style={styles.viewTermsText}>View Terms & Conditions</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Payment Summary */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Payment Summary</Text>
-          <View style={styles.paymentCard}>
-            <View style={styles.paymentRow}>
-              <Text style={styles.paymentLabel}>Total Amount</Text>
-              <Text style={styles.paymentValue}>₹{totalAmount}</Text>
-            </View>
-
-            <View style={styles.paymentRow}>
-              <Text style={styles.paymentLabel}>Discount</Text>
-              <Text style={styles.discountValue}>-₹{totalSavings}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.paymentRow}>
-              <Text style={styles.totalLabel}>Payable Amount</Text>
-              <Text style={styles.totalValue}>₹{payableAmount}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Cancellation Information */}
-        {labBooking.isBookingCancel && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Cancellation Information</Text>
-            <View style={styles.cancellationCard}>
-              <MaterialIcons name="cancel" size={24} color="#ef4444" />
-              <Text style={styles.cancellationTitle}>Booking Cancelled</Text>
-              {labBooking.cancel_reason && (
-                <Text style={styles.cancellationReason}>Reason: {labBooking.cancel_reason}</Text>
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Action Buttons */}
-        {getStatus === "pending" ? (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancelBooking}>
-            <MaterialIcons name="cancel" size={20} color="#fff" />
-            <Text style={styles.cancelButtonText}>Cancel Booking</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Back to Bookings</Text>
-          </TouchableOpacity>
+        {bookingDetails?.status !== 'Cancelled' && bookingDetails?.status !== 'Rescheduled' && (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.rescheduleButton]} 
+              onPress={toggleRescheduleSheet}
+            >
+              <Ionicons name="calendar" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>Reschedule</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.cancelButton]} 
+              onPress={toggleCancelSheet}
+            >
+              <Ionicons name="close-circle" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
-        {/* Support Note */}
-        <View style={styles.supportNoteContainer}>
-          <Text style={styles.supportNoteText}>Need help with your booking? Contact our support team.</Text>
-        </View>
+        {/* Bottom padding */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {/* Floating Support Button */}
-      <TouchableOpacity style={styles.floatingButton} onPress={handleSupport}>
-        <MaterialIcons name="support-agent" size={24} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  )
+      {/* Cancel Confirmation Bottom Sheet */}
+      {cancelConfirmOpen && (
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Cancel Booking</Text>
+              <TouchableOpacity onPress={toggleCancelSheet}>
+                <AntDesign name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.bottomSheetMessage}>
+              Are you sure you want to cancel this lab test booking? This action cannot be undone.
+            </Text>
+            
+            <View style={styles.bottomSheetButtons}>
+              <TouchableOpacity 
+                style={[styles.bottomSheetButton, styles.bottomSheetCancelButton]} 
+                onPress={toggleCancelSheet}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.bottomSheetCancelButtonText}>No, Keep It</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.bottomSheetButton, styles.bottomSheetConfirmButton]} 
+                onPress={handleCancelBooking}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.bottomSheetConfirmButtonText}>Yes, Cancel</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Reschedule Bottom Sheet */}
+      {rescheduleOpen && (
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Reschedule Booking</Text>
+              <TouchableOpacity onPress={toggleRescheduleSheet}>
+                <AntDesign name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.bottomSheetMessage}>
+              Please select a new date and time for your lab test.
+            </Text>
+            
+            <View style={styles.rescheduleForm}>
+              <TouchableOpacity 
+                style={styles.datePickerButton} 
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar" size={20} color="#6366f1" />
+                <Text style={styles.datePickerButtonText}>
+                  {rescheduleDate ? format(rescheduleDate, 'PPP') : 'Select Date'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.datePickerButton} 
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Ionicons name="time" size={20} color="#6366f1" />
+                <Text style={styles.datePickerButtonText}>
+                  {rescheduleTime ? rescheduleTime : 'Select Time'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {showDatePicker && (
+              <DateTimePicker
+                value={rescheduleDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+            
+            {showTimePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onTimeChange}
+              />
+            )}
+            
+            <View style={styles.bottomSheetButtons}>
+              <TouchableOpacity 
+                style={[styles.bottomSheetButton, styles.bottomSheetCancelButton]} 
+                onPress={toggleRescheduleSheet}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.bottomSheetCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.bottomSheetButton, styles.bottomSheetConfirmButton]} 
+                onPress={handleReschedule}
+                disabled={isSubmitting || !rescheduleDate || !rescheduleTime}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.bottomSheetConfirmButtonText}>Reschedule</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: '#f5f5f5',
   },
-  loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
-    color: "#fff",
     marginTop: 10,
     fontSize: 16,
+    color: '#6366f1',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#ef4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  placeholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
-    padding: 15,
   },
-  statusBanner: {
-    flexDirection: "row",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  statusIconContainer: {
-    marginRight: 15,
-  },
-  statusTextContainer: {
-    flex: 1,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  statusDescription: {
-    fontSize: 14,
-    color: "#666",
-  },
-  sectionContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 10,
-  },
-  detailsCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+  statusContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    marginTop: 12,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  confirmedStatus: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  cancelledStatus: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  rescheduledStatus: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  defaultStatus: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  statusText: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#10b981',
+  },
+  bookingRef: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  testCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  testImage: {
+    width: 100,
+    height: 100,
+  },
+  testInfo: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  testTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  discountPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginRight: 8,
+  },
+  originalPrice: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  detailsCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
   detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  detailIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  detailTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   detailLabel: {
     fontSize: 14,
-    color: "#666",
-    width: 80,
-    marginLeft: 10,
+    color: '#6b7280',
+    marginBottom: 4,
   },
   detailValue: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "500",
-    flex: 1,
-  },
-  petCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    flexDirection: "row",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  petImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    overflow: "hidden",
-    marginRight: 15,
-  },
-  petImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  petInfo: {
-    flex: 1,
-  },
-  petName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 10,
-  },
-  petDetailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  petDetailLabel: {
-    fontSize: 14,
-    color: "#666",
-    width: 50,
-    marginLeft: 8,
-  },
-  petDetailValue: {
-    fontSize: 14,
-    color: "#333",
-    flex: 1,
-  },
-  testCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  testHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  testName: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
+    color: '#111827',
+    fontWeight: '500',
   },
-  ultrasoundBadge: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
+  detailSubValue: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
-  ultrasoundText: {
-    fontSize: 12,
-    color: "#4F46E5",
-    fontWeight: "600",
+  paidStatus: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
-  testDetails: {
-    marginTop: 5,
+  unpaidStatus: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
-  testDetailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  testDetailLabel: {
+  paymentStatusText: {
     fontSize: 14,
-    color: "#666",
-    width: 50,
+    fontWeight: '600',
+    color: '#10b981',
   },
-  testDetailValue: {
-    fontSize: 14,
-    color: "#333",
-    flex: 1,
+  totalAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#6366f1',
   },
-  testPriceContainer: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 24,
   },
-  testPriceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-  },
-  testPriceLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  testOriginalPrice: {
-    fontSize: 14,
-    color: "#888",
-    textDecorationLine: "line-through",
-  },
-  testDiscountPrice: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#4F46E5",
-  },
-  testSavings: {
-    fontSize: 14,
-    color: "#10b981",
-  },
-  noTestsContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  noTestsText: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 10,
-  },
-  clinicCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  clinicName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 5,
-  },
-  clinicAddress: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  clinicHours: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 10,
-  },
-  clinicRatingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  clinicRating: {
-    fontSize: 14,
-    color: "#333",
-    marginLeft: 5,
-  },
-  clinicButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  clinicButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#EEF2FF",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
     borderRadius: 8,
     flex: 1,
-    marginHorizontal: 5,
-  },
-  clinicButtonText: {
-    fontSize: 14,
-    color: "#4F46E5",
-    fontWeight: "600",
-    marginLeft: 5,
-  },
-  offerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    marginHorizontal: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
     elevation: 2,
   },
-  offerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  offerCode: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#4F46E5",
-    marginLeft: 10,
-  },
-  offerDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 15,
-  },
-  offerDetails: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-  },
-  offerDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-  },
-  offerDetailLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  offerDetailValue: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-  },
-  viewTermsButton: {
-    alignItems: "center",
-  },
-  viewTermsText: {
-    fontSize: 14,
-    color: "#4F46E5",
-    fontWeight: "600",
-  },
-  paymentCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  paymentLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  paymentValue: {
-    fontSize: 14,
-    color: "#333",
-  },
-  discountValue: {
-    fontSize: 14,
-    color: "#10b981",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginVertical: 10,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#4F46E5",
-  },
-  cancellationCard: {
-    backgroundColor: "#FEF2F2",
-    borderRadius: 10,
-    padding: 15,
-    alignItems: "center",
-  },
-  cancellationTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#ef4444",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  cancellationReason: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
+  rescheduleButton: {
+    backgroundColor: '#6366f1',
   },
   cancelButton: {
-    backgroundColor: "#ef4444",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-    marginBottom: 20,
+    backgroundColor: '#ef4444',
   },
-  cancelButtonText: {
-    color: "#fff",
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '600',
     fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 10,
+    marginLeft: 8,
   },
-  backButton: {
-    backgroundColor: "#4F46E5",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 20,
+  bottomPadding: {
+    height: 100,
   },
-  backButtonText: {
-    color: "#fff",
+  bottomSheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  bottomSheetMessage: {
     fontSize: 16,
-    fontWeight: "bold",
+    color: '#4b5563',
+    marginBottom: 24,
   },
-  supportNoteContainer: {
-    padding: 15,
-    marginBottom: 30,
-    alignItems: "center",
+  bottomSheetButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  supportNoteText: {
-    fontSize: 13,
-    color: "#888",
-    textAlign: "center",
+  bottomSheetButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 6,
   },
-  floatingButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    backgroundColor: "#4F46E5",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+  bottomSheetCancelButton: {
+    backgroundColor: '#f3f4f6',
   },
-})
-
+  bottomSheetConfirmButton: {
+    backgroundColor: '#6366f1',
+  },
+  bottomSheetCancelButtonText: {
+    color: '#4b5563',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  bottomSheetConfirmButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  rescheduleForm: {
+    marginBottom: 24,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    color: '#111827',
+    marginLeft: 12,
+  },
+});

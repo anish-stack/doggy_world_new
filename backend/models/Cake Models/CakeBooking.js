@@ -32,7 +32,7 @@ const CakeBookingSchema = new mongoose.Schema({
             const randomNum = Math.floor(Math.random() * (9999999 - 1000000 + 1)) + 1000000;
             return `CAKE-${randomNum}`;
         },
-        unique: true, 
+        unique: true,
     },
     pet: {
         type: mongoose.Schema.Types.ObjectId,
@@ -106,6 +106,7 @@ const CakeBookingSchema = new mongoose.Schema({
     Same_Day_delivery: {
         type: Boolean,
     },
+    reason: String,
     deliveryInfo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Address',

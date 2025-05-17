@@ -4,6 +4,7 @@ const sendNotification = require("../../utils/sendNotification");
 const SettingsModel = require("../../models/Settings/Settings.model");
 const dayjs = require('dayjs');
 const { getIndiaDay } = require("../../utils/GetIndiaDay");
+const VaccinationBooking = require("../../models/VaccinationSchema/VaccinationBooking");
 
 exports.BookingOfLabTest = async (req, res) => {
   try {
@@ -136,6 +137,81 @@ exports.BookingOfLabTest = async (req, res) => {
   }
 };
 
+exports.getMyLabTestAndVaccinationByUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized. Please log in.'
+      });
+    }
+
+    // Fetch Lab Test Bookings
+    const labBookings = await LabBooking.find({ pet: userId })
+      .populate({
+        path: 'pet',
+        select: 'petType petname petOwnertNumber petdob petbreed',
+        populate: {
+          path: 'petType',
+          select: 'petType',
+        }
+      })
+      .populate('Address')
+      .populate('labTests', 'mainImage title price discount_price home_price_of_package home_price_of_package_discount')
+      .populate('clinic', 'clinicName address')
+      .populate('payment', 'forWhat amount razorpay_payment_id payment_status')
+      .sort({ createdAt: -1 });
+
+    // Fetch Vaccination Bookings
+    const vaccinationBookings = await VaccinationBooking.find({ pet: userId })
+      .populate({
+        path: 'pet',
+        select: 'petType petname petOwnertNumber petdob petbreed',
+        populate: {
+          path: 'petType',
+          select: 'petType',
+        }
+      })
+      .populate('vaccine', '-image -small_desc -desc -WhichTypeOfvaccinations')
+      .populate('clinic', 'clinicName address')
+      .populate('nextScheduledVaccination')
+      .populate('Address')
+      .populate('payment', 'razorpay_order_id razorpay_payment_id amount payment_status')
+      .sort({ createdAt: -1 });
+
+    // If both arrays are empty
+    if (labBookings.length === 0 && vaccinationBookings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          labBookings: [],
+          vaccinationBookings: [],
+        },
+        message: 'No bookings found. Please make your first booking.'
+      });
+    }
+
+    // Return both datasets
+    return res.status(200).json({
+      success: true,
+      data: {
+        labBookings,
+        vaccinationBookings
+      },
+      message: 'Lab and vaccination bookings fetched successfully.'
+    });
+
+  } catch (error) {
+    console.error('Error in getMyLabTestAndVaccinationByUser:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error. Please try again later.',
+      error: error.message
+    });
+  }
+};
 
 
 exports.SingleBookingOfLabTest = async (req, res) => {
@@ -231,7 +307,7 @@ exports.CancelBookingOfLabTest = async (req, res) => {
     }
 
     // Check if already in a final state
-    const finalStatuses = ['Cancelled', 'Completed', 'Rescheduled'];
+    const finalStatuses = ['Cancelled', 'Completed'];
     if (finalStatuses.includes(booking.status)) {
       return res.status(400).json({
         success: false,
@@ -577,7 +653,7 @@ exports.UpdateStatusBookingOfLabTest = async (req, res) => {
     }
 
     // Check if already in a final state
-    const finalStatuses = ['Cancelled', 'Completed', ];
+    const finalStatuses = ['Cancelled', 'Completed',];
     if (finalStatuses.includes(booking.status)) {
       return res.status(400).json({
         success: false,

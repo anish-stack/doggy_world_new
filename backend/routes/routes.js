@@ -32,10 +32,10 @@ const { createAddress, getAllAddressesByPetId, getAddressById, updateAddress, de
 const { createTypeOfLabTest, getAllTypeOfLabTests, getSingleTypeOfLabTest, updateTypeOfLabTest, deleteTypeOfLabTest } = require('../controller/LabControllers/TypeOfLabs');
 const { createLabTestProduct, AllBookingsOfLab, getAllLabTestProducts, getSingleLabTestProduct, updateLabTestProduct, deleteLabTestProduct } = require('../controller/LabControllers/LabController');
 const { createSettings, getSettings, updateSettings, deleteSettings, createAdminSettings } = require('../controller/AdminSettings/Settings');
-const { BookingOfLabTest, SingleBookingOfLabTest, CancelBookingOfLabTest, RescheduleOfLabTest, deleteBookingoflab, UpdateStatusBookingOfLabTest } = require('../controller/LabControllers/LabOrderController');
-const { AllBookingsOfPhysio, BookingsOfPhysio, SingleBookingOfPhysio, CancelBookingOfPhysio, deleteBookingofPhysio, RescheduleOfPhysio, updatePhyioStatus, AddAreviewToPhysio } = require('../controller/PhysioTherapy/PhysioOrders');
-const { makeBookingForPetBakeryAndShop, getBookingDetailsShopBooking, getAllBookingDetailsShopBooking, changeOrderStatusOrBakery } = require('../controller/common/BookingPetShopAndBakery');
-const { makeBookingForCake, getAllCakeBooking, getSingleCakeBooking, changeOrderStatus, deleteCakeOrder } = require('../controller/Cake Controller/CakeBooking');
+const { BookingOfLabTest, SingleBookingOfLabTest, CancelBookingOfLabTest, RescheduleOfLabTest, deleteBookingoflab, UpdateStatusBookingOfLabTest, getMyLabTestAndVaccinationByUser } = require('../controller/LabControllers/LabOrderController');
+const { AllBookingsOfPhysio, BookingsOfPhysio, SingleBookingOfPhysio, CancelBookingOfPhysio, deleteBookingofPhysio, RescheduleOfPhysio, updatePhyioStatus, AddAreviewToPhysio, BookingsMyOfPhysio } = require('../controller/PhysioTherapy/PhysioOrders');
+const { makeBookingForPetBakeryAndShop, getBookingDetailsShopBooking, getAllBookingDetailsShopBooking, changeOrderStatusOrBakery, deletePetShopAndBakeryOrder, getMyAllBookingDetailsShopBooking, getMySingleBookingDetailsShopBooking } = require('../controller/common/BookingPetShopAndBakery');
+const { makeBookingForCake, getAllCakeBooking, getSingleCakeBooking, changeOrderStatus, deleteCakeOrder, getMyAllCakeBookings } = require('../controller/Cake Controller/CakeBooking');
 const { getMyConsultationsBooking, getMyConsultationsBookingSingle, resecheduleBooking, CancelBooking, addRating, getAllConsultationsBookings, addPrescriptions } = require('../controller/Pet controller/PetOrdersControllers');
 const { getAllBookingsVaccination, SingleBookingOfVaccination, deleteBookingOfVaccination, CancelBookingOfVaccination, addNextScheduled, AddAreviewToVaccination, RescheduleOfVaccinationBooking, updatefVaccinationBookingStatus, getScheduleOfVaccination } = require('../controller/Vaccine/VaccineOrderController');
 const { DashboardAggregationDataThroughJS } = require('../controller/Dashboard/Dashboard');
@@ -196,10 +196,11 @@ router.delete('/cake-size/:id', deleteCakeSize);
 // Create a new Cake Bookings 
 router.get('/all-cake-bookings', getAllCakeBooking);
 router.get('/cake-bookings', getSingleCakeBooking);
+router.get('/cake-booking', isAuthenticated, getMyAllCakeBookings);
 router.post('/chanage-booking-status', changeOrderStatus);
 router.delete('/delete-cake-booking/:id', deleteCakeOrder);
 
- 
+
 
 //create a new pet bakery routes
 router.post('/create-pet-bakery', upload.single("image"), createPetBakery);
@@ -227,6 +228,7 @@ router.delete('/delete-physioTherapy/:id', upload.array("images"), deletePhysioT
 //order for AllBookingsOfPhysio
 router.get('/get-order-physio/:date', AllBookingsOfPhysio);
 router.get('/get-order-physio', BookingsOfPhysio);
+router.get('/get-my-order-physio', isAuthenticated, BookingsMyOfPhysio);
 router.get('/get-single-order-physio', SingleBookingOfPhysio);
 router.put('/cancel-order-of-physio', CancelBookingOfPhysio);
 router.delete('/delete-physio-booking/:id', deleteBookingofPhysio);
@@ -272,8 +274,10 @@ router.delete('/delete-shop-product/:id', deletePetShopProduct);
 //
 
 router.get('/petshop-bakery-get', getAllBookingDetailsShopBooking);
+router.get('/petshop-my-bakery-get',isAuthenticated, getMyAllBookingDetailsShopBooking);
+router.get('/petshop-my-bakery-get/:id', getMySingleBookingDetailsShopBooking);
 router.post('/chanage-petshop-status', changeOrderStatusOrBakery);
-router.delete('/delete-petshop-order', changeOrderStatusOrBakery);
+router.delete('/delete-petshop-order/:id', deletePetShopAndBakeryOrder);
 
 
 //create a Display Doctor  route
@@ -380,6 +384,7 @@ router.post('/create-cake-order', isAuthenticated, makeBookingForCake);
 
 // lab test Routes
 router.get('/lab-tests-booking', BookingOfLabTest);
+router.get('/lab-and-vaccine-my-booking', isAuthenticated, getMyLabTestAndVaccinationByUser);
 router.get('/lab-booking', SingleBookingOfLabTest);
 router.put('/lab-booking-cancel', CancelBookingOfLabTest);
 router.put('/lab-tests-booking-reschedule', RescheduleOfLabTest);
@@ -399,6 +404,6 @@ router.post('/settings/admin', createAdminSettings);
 
 
 //Dashboard admin
-router.get('/dashboard-admin',DashboardAggregationDataThroughJS)
+router.get('/dashboard-admin', DashboardAggregationDataThroughJS)
 
 module.exports = router;

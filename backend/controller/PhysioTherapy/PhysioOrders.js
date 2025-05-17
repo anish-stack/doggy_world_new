@@ -66,6 +66,40 @@ exports.BookingsOfPhysio = async (req, res) => {
 };
 
 
+exports.BookingsMyOfPhysio = async (req, res) => {
+    try {
+        const petId = req.user.id
+        const BookingOfPhsyio = await BookingPhysioModel.find({pet:petId})
+            .populate({
+                path: 'pet',
+                select: 'petType petname petOwnertNumber petdob petbreed',
+                populate: {
+                    path: 'petType', // assuming petType is a reference inside Pet model
+                    select: 'petType',  // choose fields from PetType model (optional)
+                }
+            })
+            .populate('physio')
+            .populate('paymentDetails')
+            .sort({ createdAt: -1 });
+
+        console.log('Booking of Physio:', BookingOfPhsyio.length);
+
+        res.status(200).json({
+            success: true,
+            message: 'Bookings fetched successfully',
+            data: BookingOfPhsyio,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch bookings',
+            error: error.message,
+        });
+    }
+};
+
+
 exports.SingleBookingOfPhysio = async (req, res) => {
     try {
         const { id } = req.query;
@@ -285,7 +319,7 @@ exports.RescheduleOfPhysio = async (req, res) => {
         }
 
         // Validate required fields
-        if (!rescheduledDate || !rescheduledTime || !status) {
+        if (!rescheduledDate || !rescheduledTime ) {
             return res.status(400).json({
                 success: false,
                 message: 'Missing reschedule date, time, or status.',

@@ -16,11 +16,11 @@ export default function Sidebar({ open, onClose }) {
   const navigationItems = [
     { title: 'Home', icon: 'home', screen: 'Home', requiresAuth: false },
     { title: 'My Appointments', icon: 'calendar', screen: 'Appointments', requiresAuth: true },
-    { title: 'Grooming Sessions', icon: 'water', screen: 'Groomings', requiresAuth: true },
-    { title: 'Orders', icon: 'cube', screen: 'Orders', requiresAuth: true },
-    { title: 'Cakes Order', icon: 'gift', screen: 'cakeorder', requiresAuth: true },
-    { title: 'Physio Bookings', icon: 'fitness', screen: 'physioBookings', requiresAuth: true },
     { title: 'Lab & Vaccination', icon: 'medical', screen: 'labVaccinations', requiresAuth: true },
+    { title: 'Physio Bookings', icon: 'fitness', screen: 'physioBookings', requiresAuth: true },
+    { title: 'Pet Shop And Bakery', icon: 'cube', screen: 'Orders', requiresAuth: true },
+    { title: 'Cakes Order', icon: 'gift', screen: 'cakeorder', requiresAuth: true },
+    { title: 'Grooming Sessions', icon: 'water', screen: 'Groomings', requiresAuth: true },
   ];
 
   const settingsItems = [

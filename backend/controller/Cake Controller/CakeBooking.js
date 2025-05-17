@@ -161,7 +161,50 @@ exports.getAllCakeBooking = async (req, res) => {
             .populate("cakeDesign", "name image")
             .populate("cakeFlavor", "name")
             .populate("size", "price weight")
-            .populate("clinic", "clinicName address")
+               .populate("clinic", "clinicName address phone openTime closeTime mapLocation")
+            .populate("pet", "petname petOwnertNumber petdob petbreed")
+            .populate("paymentDetails")
+            .populate("deliveryInfo").sort({ createdAt: -1 });
+
+        if (!Bookings || Bookings.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No cake bookings found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "All cake bookings retrieved successfully.",
+            data: Bookings,
+        });
+
+    } catch (error) {
+        console.error("Error fetching cake bookings:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching cake bookings.",
+            error: error.message,
+        });
+    }
+};
+
+exports.getMyAllCakeBookings = async (req, res) => {
+    try {
+
+        const petId = req.user.id
+        if (!petId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Please Login to access this '
+            })
+        }
+
+        const Bookings = await CakeBooking.find({ pet: petId })
+            .populate("cakeDesign", "name image")
+            .populate("cakeFlavor", "name")
+            .populate("size", "price weight")
+            .populate("clinic", "clinicName address phone openTime closeTime mapLocation")
             .populate("pet", "petname petOwnertNumber petdob petbreed")
             .populate("paymentDetails")
             .populate("deliveryInfo").sort({ createdAt: -1 });
@@ -228,7 +271,7 @@ exports.getSingleCakeBooking = async (req, res) => {
 
 exports.changeOrderStatus = async (req, res) => {
     try {
-        const { id, status } = req.body;
+        const { id, status ,reason} = req.body;
 
 
         if (!id || !status) {
@@ -258,6 +301,7 @@ exports.changeOrderStatus = async (req, res) => {
         }
 
         booking.bookingStatus = status;
+        booking.reason = reason;
 
         await booking.save();
         if (booking.fcmToken) {
