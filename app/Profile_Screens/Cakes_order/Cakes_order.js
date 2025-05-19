@@ -23,7 +23,7 @@ import axios from "axios";
 import { useToken } from "../../hooks/useToken";
 import LottieView from 'lottie-react-native';
 
-const BASE_URL = "http://192.168.1.24:8000/api/v1";
+const BASE_URL = "http://192.168.1.22:8000/api/v1";
 const { width } = Dimensions.get('window');
 
 export default function Cakes_order() {

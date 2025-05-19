@@ -309,8 +309,8 @@ const DashboardPage = () => {
       icon: <Syringe className="h-5 w-5" />,
       items: [
         { to: "/dashboard/type-of-vaccination-collection", label: "Collection Type" },
-        { to: "/dashboard/all-vaccination", label: "All Vaccination" },
-        { to: "/dashboard/schedule-vaccination", label: "Schedule Vaccination" },
+        { to: "/dashboard/all-vaccination", label: "All Vaccination" }
+        
       ],
     },
     {

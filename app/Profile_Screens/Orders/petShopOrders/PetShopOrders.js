@@ -20,7 +20,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import axios from 'axios';
 import { useToken } from '../../../hooks/useToken';
 
-const BASE_URL = "http://192.168.1.24:8000/api/v1";
+const BASE_URL = "http://192.168.1.22:8000/api/v1";
 
 export default function PetShopOrders() {
   const navigation = useNavigation();
