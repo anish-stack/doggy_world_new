@@ -1,33 +1,33 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { format } from 'date-fns';
-import { Calendar, Clock, MapPin, Search, Filter, ChevronLeft, ChevronRight, FileText, Download, AlertCircle, Check, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
+import { format } from 'date-fns'
+import { Calendar, Clock, MapPin, Search, Filter, ChevronLeft, ChevronRight, FileText, Download, AlertCircle, Check, X, Upload, File, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
 
 // Import shadcn components
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { toast } from 'sonner'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from '@/components/ui/checkbox';
-import { API_URL } from '@/constant/Urls';
+} from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 // Status color mapping
 const statusColors = {
@@ -37,21 +37,23 @@ const statusColors = {
   Completed: "bg-blue-100 text-blue-800 border-blue-200",
   "Facing Error": "bg-orange-100 text-orange-800 border-orange-200",
   Rescheduled: "bg-purple-100 text-purple-800 border-purple-200"
-};
+}
 
 // Time slots for rescheduling
 const timeSlots = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
   "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
   "17:00", "17:30", "18:00", "18:30"
-];
+]
 
+// API URL - replace with your actual API URL
+const API_URL = "http://localhost:8000/api/v1"
 
 const AllLabOrders = () => {
   // State for bookings and pagination
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -59,7 +61,7 @@ const AllLabOrders = () => {
     totalBookings: 0,
     hasNextPage: false,
     hasPrevPage: false
-  });
+  })
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -67,51 +69,58 @@ const AllLabOrders = () => {
     status: "",
     bookingType: "",
     search: ""
-  });
+  })
 
   // Selected booking for actions
-  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null)
+
+  // Report states
+  const [reportFiles, setReportFiles] = useState([])
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadingReports, setUploadingReports] = useState(false)
+  const [reportError, setReportError] = useState(null)
 
   // Dialog states
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
-  const [updateStatusOpen, setUpdateStatusOpen] = useState(false);
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [generateReportOpen, setGenerateReportOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false)
+  const [updateStatusOpen, setUpdateStatusOpen] = useState(false)
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [generateReportOpen, setGenerateReportOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [viewReportOpen, setViewReportOpen] = useState(false)
+  const [selectedReport, setSelectedReport] = useState(null)
 
   // Form states
-  const [newStatus, setNewStatus] = useState("");
-  const [rescheduleDate, setRescheduleDate] = useState(null);
-  const [rescheduleTime, setRescheduleTime] = useState("");
-  const [reportFile, setReportFile] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newStatus, setNewStatus] = useState("")
+  const [rescheduleDate, setRescheduleDate] = useState(null)
+  const [rescheduleTime, setRescheduleTime] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [addressForm, setAddressForm] = useState({
     street: "",
     city: "",
     state: "",
     zipCode: "",
     country: "IN"
-  });
-  const [updateAddress, setUpdateAddress] = useState(false);
+  })
+  const [updateAddress, setUpdateAddress] = useState(false)
 
   // Memoized fetch function to prevent unnecessary re-renders
   const fetchBookings = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const params = new URLSearchParams();
-      params.append('page', pagination.currentPage.toString());
-      params.append('limit', pagination.limit.toString());
+      const params = new URLSearchParams()
+      params.append('page', pagination.currentPage.toString())
+      params.append('limit', pagination.limit.toString())
 
-      if (filters.date) params.append('date', filters.date);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.bookingType) params.append('bookingType', filters.bookingType);
-      if (filters.search) params.append('search', filters.search);
+      if (filters.date) params.append('date', filters.date)
+      if (filters.status) params.append('status', filters.status)
+      if (filters.bookingType) params.append('bookingType', filters.bookingType)
+      if (filters.search) params.append('search', filters.search)
 
-      const response = await axios.get(`${API_URL}/lab-tests-booking?${params.toString()}`);
+      const response = await axios.get(`${API_URL}/lab-tests-booking?${params.toString()}`)
 
       if (response.data.success) {
-        setBookings(response.data.data.bookings);
+        setBookings(response.data.data.bookings)
         setPagination({
           currentPage: response.data.data.pagination.currentPage,
           totalPages: response.data.data.pagination.totalPages,
@@ -119,33 +128,33 @@ const AllLabOrders = () => {
           totalBookings: response.data.data.pagination.totalBookings,
           hasNextPage: response.data.data.pagination.hasNextPage,
           hasPrevPage: response.data.data.pagination.hasPrevPage
-        });
+        })
       } else {
-        setError("Failed to fetch bookings");
+        setError("Failed to fetch bookings")
       }
     } catch (err) {
-      setError(err.message || "An error occurred while fetching bookings");
+      setError(err.message || "An error occurred while fetching bookings")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [pagination.currentPage, pagination.limit, filters]);
+  }, [pagination.currentPage, pagination.limit, filters])
 
   // Initial load and when dependencies change
   useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+    fetchBookings()
+  }, [fetchBookings])
 
   // Handle filter changes
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value
-    }));
+    }))
     setPagination(prev => ({
       ...prev,
       currentPage: 1 // Reset to first page when filters change
-    }));
-  };
+    }))
+  }
 
   // Reset filters
   const resetFilters = () => {
@@ -154,153 +163,206 @@ const AllLabOrders = () => {
       status: "",
       bookingType: "",
       search: ""
-    });
-  };
+    })
+  }
 
   // Handle update status
   const handleUpdateStatus = async () => {
     if (!newStatus) {
-      toast.error('Please select a status');
-      return;
+      toast.error('Please select a status')
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await axios.put(`http://localhost:8000/api/v1/lab-tests-booking/${selectedBooking._id}/status`, {
+      await axios.put(`${API_URL}/lab-tests-booking/${selectedBooking._id}/status`, {
         status: newStatus
-      });
+      })
 
-      toast.success(`Booking status updated to ${newStatus}`);
-
-      setUpdateStatusOpen(false);
-      fetchBookings();
+      toast.success(`Booking status updated to ${newStatus}`)
+      setUpdateStatusOpen(false)
+      fetchBookings()
     } catch (err) {
-       toast.success(err?.response?.data?.message)
-     
+      toast.error(err?.response?.data?.message || "Failed to update status")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
+
+  // Handle file selection for reports
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files)
+    
+    // Validate file size (5MB max per file)
+    const invalidFiles = selectedFiles.filter(file => file.size > 5 * 1024 * 1024)
+    
+    if (invalidFiles.length > 0) {
+      setReportError(`${invalidFiles.length} file(s) exceed the 5MB limit`)
+      toast.error("Some files exceed the 5MB size limit", {
+        description: "Please select files smaller than 5MB each"
+      })
+      
+      // Filter out invalid files
+      const validFiles = selectedFiles.filter(file => file.size <= 5 * 1024 * 1024)
+      setReportFiles(validFiles)
+    } else {
+      setReportError(null)
+      setReportFiles(selectedFiles)
+    }
+  }
+
+  // Remove a file from the report files list
+  const removeFile = (index) => {
+    setReportFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Handle report upload
+  const handleUploadReport = async () => {
+    if (reportFiles.length === 0) {
+      toast.error('Please select at least one report file')
+      return
+    }
+
+    setUploadingReports(true)
+    setUploadProgress(0)
+    
+    try {
+      const formData = new FormData()
+      
+      reportFiles.forEach(file => {
+        formData.append('reports', file)
+      })
+
+      const response = await axios.post(
+        `${API_URL}/lab-tests-report/${selectedBooking._id}`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            setUploadProgress(percentCompleted)
+          }
+        }
+      )
+
+      if (response.data.success) {
+        toast.success("Reports uploaded successfully", {
+          description: "The lab test reports have been uploaded"
+        })
+        
+        setGenerateReportOpen(false)
+        setReportFiles([])
+        fetchBookings()
+      } else {
+        toast.error("Failed to upload reports")
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to upload reports")
+    } finally {
+      setUploadingReports(false)
+    }
+  }
 
   // Handle reschedule
   const handleReschedule = async () => {
     if (!rescheduleDate) {
-      toast({
-        title: "Error",
-        description: "Please select a date",
-        variant: "destructive"
-      });
-      return;
+      toast.error("Please select a date")
+      return
     }
 
     if (!rescheduleTime) {
-      toast({
-        title: "Error",
-        description: "Please select a time",
-        variant: "destructive"
-      });
-      return;
+      toast.error("Please select a time")
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      const formattedDate = format(rescheduleDate, 'yyyy-MM-dd');
+      const formattedDate = format(rescheduleDate, 'yyyy-MM-dd')
 
       const payload = {
         rescheduledDate: formattedDate,
         rescheduledTime: rescheduleTime,
         status: "Rescheduled"
-      };
+      }
 
       // If updating address for home bookings
       if (selectedBooking.bookingType === 'Home' && updateAddress) {
         if (!addressForm.street || !addressForm.city || !addressForm.state || !addressForm.zipCode) {
-          toast({
-            title: "Error",
-            description: "Please fill all address fields",
-            variant: "destructive"
-          });
-          setIsSubmitting(false);
-          return;
+          toast.error("Please fill all address fields")
+          setIsSubmitting(false)
+          return
         }
 
-        payload.Address = addressForm;
+        payload.Address = addressForm
       }
 
-      const response = await axios.put(`http://localhost:8000/api/v1/lab-tests-booking-reschedule?id=${selectedBooking._id}&type=reschedule`, payload);
+      const response = await axios.put(`${API_URL}/lab-tests-booking-reschedule?id=${selectedBooking._id}&type=reschedule`, payload)
 
-      console.log(response.data)
-
-
-      setRescheduleOpen(false);
-      fetchBookings();
+      if (response.data.success) {
+        toast.success("Appointment rescheduled successfully")
+        setRescheduleOpen(false)
+        fetchBookings()
+      } else {
+        toast.error(response.data.message || "Failed to reschedule appointment")
+      }
     } catch (err) {
-      console.log(err)
+      toast.error(err?.response?.data?.message || "Failed to reschedule appointment")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   // Handle delete booking
   const handleDeleteBooking = async () => {
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await axios.delete(`${API_URL}/lab-tests-booking-delete/${selectedBooking._id}`);
+      await axios.delete(`${API_URL}/lab-tests-booking-delete/${selectedBooking._id}`)
 
-      toast.success('Lab test booking has been deleted successfully');
-
-      setDeleteConfirmOpen(false);
-      fetchBookings();
+      toast.success('Lab test booking has been deleted successfully')
+      setDeleteConfirmOpen(false)
+      fetchBookings()
     } catch (err) {
-      toast.success(err.response.data.message || 'Failed to delete booking');
-
-
+      toast.error(err?.response?.data?.message || 'Failed to delete booking')
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-
+  // Handle cancel booking
   const handleCancelBooking = async () => {
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await axios.put(`http://localhost:8000/api/v1/lab-booking-cancel?id=${selectedBooking._id}&status=Cancelled`);
+      await axios.put(`${API_URL}/lab-booking-cancel?id=${selectedBooking._id}&status=Cancelled`)
 
-      toast({
-        title: "Booking Cancelled",
-        description: "Lab test booking has been cancelled successfully",
-      });
-
-      setCancelConfirmOpen(false);
-      fetchBookings();
+      toast.success("Booking cancelled successfully")
+      setCancelConfirmOpen(false)
+      fetchBookings()
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to cancel booking",
-        variant: "destructive"
-      });
+      toast.error(err?.response?.data?.message || "Failed to cancel booking")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
-    }).format(price);
-  };
+    }).format(price)
+  }
 
   // Format date
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return format(new Date(dateString), 'PPP');
-  };
+    if (!dateString) return 'N/A'
+    return format(new Date(dateString), 'PPP')
+  }
 
   // Open booking details
   const openBookingDetails = (booking) => {
-    setSelectedBooking(booking);
+    setSelectedBooking(booking)
 
     // Pre-fill address form if it's a home booking
     if (booking.bookingType === 'Home' && booking.Address) {
@@ -310,20 +372,20 @@ const AllLabOrders = () => {
         state: booking.Address.state || "",
         zipCode: booking.Address.zipCode || "",
         country: booking.Address.country || "IN"
-      });
+      })
     }
 
-    setViewDetailsOpen(true);
-  };
+    setViewDetailsOpen(true)
+  }
 
   // Open reschedule dialog
   const openRescheduleDialog = (booking) => {
-    setSelectedBooking(booking);
+    setSelectedBooking(booking)
 
     // Pre-fill with current values
-    const currentDate = booking.rescheduledDate ? new Date(booking.rescheduledDate) : new Date(booking.selectedDate);
-    setRescheduleDate(currentDate);
-    setRescheduleTime(booking.rescheduledTime || booking.selectedTime);
+    const currentDate = booking.rescheduledDate ? new Date(booking.rescheduledDate) : new Date(booking.selectedDate)
+    setRescheduleDate(currentDate)
+    setRescheduleTime(booking.rescheduledTime || booking.selectedTime)
 
     // Pre-fill address form if it's a home booking
     if (booking.bookingType === 'Home' && booking.Address) {
@@ -333,12 +395,29 @@ const AllLabOrders = () => {
         state: booking.Address.state || "",
         zipCode: booking.Address.zipCode || "",
         country: booking.Address.country || "IN"
-      });
+      })
     }
 
-    setUpdateAddress(false);
-    setRescheduleOpen(true);
-  };
+    setUpdateAddress(false)
+    setRescheduleOpen(true)
+  }
+
+  // Open report view dialog
+  const openReportView = (report) => {
+    setSelectedReport(report)
+    setViewReportOpen(true)
+  }
+
+  // Get file size in readable format
+  const getFileSize = (size) => {
+    if (size < 1024) {
+      return `${size} B`
+    } else if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(2)} KB`
+    } else {
+      return `${(size / (1024 * 1024)).toFixed(2)} MB`
+    }
+  }
 
   // Loading skeleton
   if (loading && bookings.length === 0) {
@@ -365,7 +444,7 @@ const AllLabOrders = () => {
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   // Error state
@@ -377,7 +456,7 @@ const AllLabOrders = () => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       </div>
-    );
+    )
   }
 
   return (
@@ -437,7 +516,6 @@ const AllLabOrders = () => {
                 </SelectContent>
               </Select>
             </div>
-
 
             <div>
               <Label htmlFor="type-filter">Booking Type</Label>
@@ -557,6 +635,11 @@ const AllLabOrders = () => {
                         <Badge className={statusColors[booking.status]}>
                           {booking.status}
                         </Badge>
+                        {booking.Report && booking.Report.length > 0 && (
+                          <Badge variant="outline" className="ml-2 bg-blue-50 border-blue-200 text-blue-800">
+                            Has Reports
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -578,6 +661,20 @@ const AllLabOrders = () => {
                             <span className="sr-only">Reschedule</span>
                             <Calendar className="h-4 w-4" />
                           </Button>
+                          {booking.status === 'Completed' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50"
+                              onClick={() => {
+                                setSelectedBooking(booking)
+                                setGenerateReportOpen(true)
+                              }}
+                            >
+                              <span className="sr-only">Generate Report</span>
+                              <Upload className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -645,7 +742,7 @@ const AllLabOrders = () => {
       {/* View Details Dialog */}
       {selectedBooking && (
         <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-          <DialogContent className="max-w-3xl overflow-scroll max-h-[95vh]">
+          <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="text-xl">Booking Details</DialogTitle>
               <DialogDescription className="flex items-center gap-2">
@@ -659,7 +756,12 @@ const AllLabOrders = () => {
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="tests">Lab Tests</TabsTrigger>
-                  <TabsTrigger value="payment">Payment</TabsTrigger>
+                  <TabsTrigger value="reports" className="relative">
+                    Reports
+                    {selectedBooking.Report && selectedBooking.Report.length > 0 && (
+                      <Badge className="ml-2 bg-blue-500 text-white">{selectedBooking.Report.length}</Badge>
+                    )}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-4 pt-4">
@@ -809,60 +911,91 @@ const AllLabOrders = () => {
                         </CardContent>
                       </Card>
                     ))}
-
-                    {selectedBooking.ReportId && (
-                      <div className="mt-4">
-                        <h4 className="font-medium text-sm mb-2">Test Report</h4>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <Download className="h-4 w-4" />
-                          Download Report
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </TabsContent>
 
-                <TabsContent value="payment" className="pt-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Payment Details</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Payment ID</p>
-                          <p className="font-mono">{selectedBooking.payment?.razorpay_payment_id || 'N/A'}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Status</p>
-                          <Badge variant={selectedBooking.payment?.payment_status === 'paid' ? 'success' : 'outline'} className="bg-green-100 text-green-800 border-green-200">
-                            {selectedBooking.payment?.payment_status || 'N/A'}
-                          </Badge>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Amount</p>
-                          <p className="font-medium">{formatPrice(selectedBooking.totalPayableAmount)}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Coupon</p>
-                          <div className="flex items-center gap-2">
-                            {selectedBooking.couponCode ? (
-                              <>
-                                <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
-                                  {selectedBooking.couponCode}
-                                </Badge>
-                                {selectedBooking.couponDiscount && selectedBooking.couponDiscount !== "0" && (
-                                  <span className="text-sm text-green-600">-₹{selectedBooking.couponDiscount}</span>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">No coupon applied</span>
-                            )}
-                          </div>
-                        </div>
+                <TabsContent value="reports" className="pt-4">
+                  {selectedBooking.Report && selectedBooking.Report.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium">Test Reports</h3>
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
+                          Reports auto-delete after 7 days
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
+                      
+                      <div className="grid gap-4">
+                        {selectedBooking.Report.map((report, idx) => (
+                          <Card key={idx} className="overflow-hidden">
+                            <div className="flex items-center p-4 bg-muted/30">
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className="bg-primary/10 p-2 rounded-md">
+                                  <FileText className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-sm">Report #{idx + 1}</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {report.date ? formatDate(report.date) : 'Date not available'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.open(report.url, '_blank')}
+                                >
+                                  <Download className="h-4 w-4 mr-1" />
+                                  Download
+                                </Button>
+                                <Button 
+                                  variant="secondary" 
+                                  size="sm"
+                                  onClick={() => openReportView(report)}
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                      
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          onClick={() => {
+                            setGenerateReportOpen(true)
+                            setViewDetailsOpen(false)
+                          }}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload More Reports
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="bg-muted/30 p-4 rounded-full mb-4">
+                        <FileText className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">No Reports Available</h3>
+                      <p className="text-muted-foreground mb-6 max-w-md">
+                        There are no test reports uploaded for this booking yet. You can generate and upload reports if the test is completed.
+                      </p>
+                      {selectedBooking.status === 'Completed' && (
+                        <Button
+                          onClick={() => {
+                            setGenerateReportOpen(true)
+                            setViewDetailsOpen(false)
+                          }}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Generate Report
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
 
@@ -872,8 +1005,8 @@ const AllLabOrders = () => {
                     variant="destructive"
                     size="sm"
                     onClick={() => {
-                      setViewDetailsOpen(false);
-                      setDeleteConfirmOpen(true);
+                      setViewDetailsOpen(false)
+                      setDeleteConfirmOpen(true)
                     }}
                   >
                     Delete
@@ -883,8 +1016,8 @@ const AllLabOrders = () => {
                     size="sm"
                     className="border-yellow-600 text-yellow-600 hover:bg-yellow-50"
                     onClick={() => {
-                      setViewDetailsOpen(false);
-                      openRescheduleDialog(selectedBooking);
+                      setViewDetailsOpen(false)
+                      openRescheduleDialog(selectedBooking)
                     }}
                   >
                     Reschedule
@@ -893,8 +1026,9 @@ const AllLabOrders = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-purple-600 text-purple-600 hover:bg-red-50"
+                    className="border-purple-600 text-purple-600 hover:bg-purple-50"
                     onClick={() => {
+                      setViewDetailsOpen(false)
                       setUpdateStatusOpen(true)
                     }}
                   >
@@ -906,8 +1040,8 @@ const AllLabOrders = () => {
                       size="sm"
                       className="border-red-600 text-red-600 hover:bg-red-50"
                       onClick={() => {
-                        setViewDetailsOpen(false);
-                        setCancelConfirmOpen(true);
+                        setViewDetailsOpen(false)
+                        setCancelConfirmOpen(true)
                       }}
                     >
                       Cancel Booking
@@ -915,17 +1049,17 @@ const AllLabOrders = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {!selectedBooking.ReportId && selectedBooking.status === 'Completed' && (
+                  {selectedBooking.status === 'Completed' && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="border-blue-600 text-blue-600 hover:bg-blue-50"
                       onClick={() => {
-                        setViewDetailsOpen(false);
-                        setGenerateReportOpen(true);
+                        setViewDetailsOpen(false)
+                        setGenerateReportOpen(true)
                       }}
                     >
-                      Generate Report
+                      {selectedBooking.Report && selectedBooking.Report.length > 0 ? 'Upload More Reports' : 'Generate Report'}
                     </Button>
                   )}
                   <Button size="sm" onClick={() => setViewDetailsOpen(false)}>Close</Button>
@@ -958,7 +1092,6 @@ const AllLabOrders = () => {
                     <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Confirmed">Confirmed</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
-
                     <SelectItem value="Facing Error">Facing Error</SelectItem>
                     <SelectItem value="Rescheduled">Rescheduled</SelectItem>
                   </SelectContent>
@@ -971,7 +1104,7 @@ const AllLabOrders = () => {
               <Button onClick={handleUpdateStatus} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <div className="flex items-center gap-1">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Updating...</span>
                   </div>
                 ) : (
@@ -983,10 +1116,162 @@ const AllLabOrders = () => {
         </Dialog>
       )}
 
+      {/* Generate Report Dialog */}
+      {selectedBooking && (
+        <Dialog open={generateReportOpen} onOpenChange={setGenerateReportOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Upload Lab Test Reports</DialogTitle>
+              <DialogDescription>
+                Upload PDF reports for booking {selectedBooking.bookingRef}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 space-y-6">
+              <Alert className="bg-blue-50 border-blue-200 text-blue-800">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Important</AlertTitle>
+                <AlertDescription>
+                  Reports will be automatically deleted after 7 days. Each PDF must be less than 5MB.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <Label htmlFor="report-files">Upload PDF Reports</Label>
+                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer relative">
+                  <Input
+                    id="report-files"
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Drag & drop files here or click to browse</p>
+                      <p className="text-xs text-muted-foreground">
+                        Supports PDF files up to 5MB each
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {reportError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{reportError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {reportFiles.length > 0 && (
+                  <div className="space-y-3 mt-4">
+                    <h4 className="text-sm font-medium">Selected Files ({reportFiles.length})</h4>
+                    <ScrollArea className="h-[200px] rounded-md border p-2">
+                      <div className="space-y-2">
+                        {reportFiles.map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                            <div className="flex items-center gap-3">
+                              <File className="h-5 w-5 text-blue-600" />
+                              <div>
+                                <p className="text-sm font-medium truncate max-w-[300px]">{file.name}</p>
+                                <p className="text-xs text-muted-foreground">{getFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                              onClick={() => removeFile(idx)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Remove file</span>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {uploadingReports && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-2" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setGenerateReportOpen(false)} disabled={uploadingReports}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUploadReport} 
+                disabled={uploadingReports || reportFiles.length === 0}
+                className="relative"
+              >
+                {uploadingReports ? (
+                  <div className="flex items-center gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <span>Uploading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Reports
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* View Report Dialog */}
+      {selectedReport && (
+        <Dialog open={viewReportOpen} onOpenChange={setViewReportOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>View Report</DialogTitle>
+              <DialogDescription>
+                {selectedReport.date ? `Uploaded on ${formatDate(selectedReport.date)}` : 'Report details'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 h-[70vh] w-full">
+              <iframe 
+                src={selectedReport.url} 
+                className="w-full h-full border rounded-md"
+                title="Report PDF Viewer"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(selectedReport.url, '_blank')}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+              <Button onClick={() => setViewReportOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Reschedule Dialog */}
       {selectedBooking && (
         <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-          <DialogContent className="max-w-2xl max-h-[95vh] overflow-scroll">
+          <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Reschedule Appointment</DialogTitle>
               <DialogDescription>
@@ -1111,7 +1396,7 @@ const AllLabOrders = () => {
               <Button onClick={handleReschedule} disabled={isSubmitting || !rescheduleDate || !rescheduleTime}>
                 {isSubmitting ? (
                   <div className="flex items-center gap-1">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Rescheduling...</span>
                   </div>
                 ) : (
@@ -1148,7 +1433,7 @@ const AllLabOrders = () => {
               <Button variant="destructive" onClick={handleDeleteBooking} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <div className="flex items-center gap-1">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Deleting...</span>
                   </div>
                 ) : (
@@ -1176,7 +1461,7 @@ const AllLabOrders = () => {
               <Button variant="destructive" onClick={handleCancelBooking} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <div className="flex items-center gap-1">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Cancelling...</span>
                   </div>
                 ) : (
@@ -1188,7 +1473,7 @@ const AllLabOrders = () => {
         </Dialog>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default AllLabOrders;
+export default AllLabOrders

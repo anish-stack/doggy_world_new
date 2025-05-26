@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "count": 2,
+  "products": [
+    {
+      "mainImage": {
+        "url": "https://res.cloudinary.com/do34gd7bu/image/upload/v1747124360/uploads/uh4v3xqfxnckdqxgtmik.jpg",
+        "public_id": "uploads/uh4v3xqfxnckdqxgtmik"
+      },
+      "_id": "6810ac71e021b72170f32b17",
+      "name": "Chicken Carrot Cookies",
+      "description": "Chicken Carrot Cookies: Combo of Chicken and Carrot is used to make a healthy baked cookies for your furry friend.",
+      "price": 349,
+      "discountPrice": 275.71,
+      "offPercentage": 21,
+      "isCod": true,
+      "isReturn": true,
+      "freshStock": true,
+      "flavour": "Chicken",
+      "tag": "New Launch",
+      "freeDelivery": true,
+      "isProductAvailable": true,
+
+      "stock": 3,
+      "isOnTopProduct": true
+    }
+  ]
+  
+}
+
+
+// pet shop product
+{
+"success": true,
+"count": 7,
+"products": [
+{
+"mainImage": {
+"url": "https://res.cloudinary.com/do34gd7bu/image/upload/v1746868524/uploads/ewcf3osa7r9eorsk97on.avif",
+"public_id": "uploads/ewcf3osa7r9eorsk97on"
+},
+"_id": "681315d065ad030c8619772b",
+"name": "Wholesome Veggie Dog Treats – A Natural, Nutrient-Rich Snack",
+"description": "A healthy, natural snack made with real carrots, beetroot, and sweet potato. Grain-free, gluten-free, and free from rawhide, meat, sugar, salt, or artificial additives. High in fiber and ideal for sensitive dogs. Perfect as a daily treat or training reward.",
+"price": 900,
+"discountPrice": 450,
+"offPercentage": 50,
+
+"isCod": true,
+"isReturn": false,
+"freshStock": true,
+"flavour": "No flavour",
+"tag": "New",
+"freeDelivery": true,
+"isProductAvailable": true,
+
+"stock": 50,
+"isOnTopProduct": true
+},
+]

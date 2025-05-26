@@ -139,7 +139,8 @@ const ConsultationCard = ({ item, navigation, expandedItems, toggleExpand }) => 
             style={styles.card}
             onPress={() => navigation.navigate('next-step', {
                 type: item.name,
-                id: item?._id
+                id: item?._id,
+           
             })}
         >
             <View style={styles.cardContent}>

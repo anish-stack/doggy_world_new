@@ -5,6 +5,10 @@ const SettingsModel = require("../../models/Settings/Settings.model");
 const dayjs = require('dayjs');
 const { getIndiaDay } = require("../../utils/GetIndiaDay");
 const VaccinationBooking = require("../../models/VaccinationSchema/VaccinationBooking");
+const { deleteMultipleFiles } = require("../../middleware/multer");
+const { uploadMultipleFiles } = require("../../utils/upload");
+const DeleteLabTest = require("../../queues/DeleteLabTest");
+const LabTestMessageReport = require("../../utils/whatsapp/sendLabTestReportUploadMessage");
 
 exports.BookingOfLabTest = async (req, res) => {
   try {
@@ -713,6 +717,94 @@ exports.UpdateStatusBookingOfLabTest = async (req, res) => {
       message: 'Internal server error.',
       error: error.message,
       code: 'SERVER_ERROR',
+    });
+  }
+};
+
+
+exports.uploadLabTestReports = async (req, res) => {
+  const files = req.files || [];
+  const images = [];
+  const publicIds = [];
+
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      if (files.length > 0) await deleteMultipleFiles(files);
+      return res.status(400).json({
+        success: false,
+        message: "Missing required ID parameter.",
+      });
+    }
+
+    const foundLabBooking = await LabBooking.findById(id)
+      .populate('labTests')
+      .populate('pet');
+
+    if (!foundLabBooking) {
+      if (files.length > 0) await deleteMultipleFiles(files);
+      return res.status(404).json({
+        success: false,
+        message: "Lab booking not found.",
+      });
+    }
+
+    if (!files.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded.",
+      });
+    }
+
+    console.log("📤 Uploading files to Cloudinary...");
+    const uploadResults = await uploadMultipleFiles(files);
+    console.log("✅ Upload successful:", uploadResults.length, "file(s)");
+
+    uploadResults.forEach((file) => {
+      images.push({
+        url: file.url,
+        public_id: file.public_id,
+        date: new Date(),
+      });
+      publicIds.push(file.public_id);
+    });
+
+    foundLabBooking.Report = [
+      ...(foundLabBooking.Report || []),
+      ...images,
+    ];
+
+    await foundLabBooking.save();
+    console.log("📝 Report saved to database.");
+
+    const delayInMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    await DeleteLabTest.add(
+      { id: foundLabBooking._id },
+      { delay: delayInMs }
+    );
+    console.log("⏳ Scheduled image deletion in 7 days via Bull queue.");
+    await LabTestMessageReport(
+      foundLabBooking?.pet?.petOwnertNumber,
+      {
+        name: foundLabBooking?.pet?.petname
+      },
+      images[0]?.url
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Lab test report(s) uploaded and saved successfully.",
+      data: foundLabBooking.Report,
+    });
+  } catch (error) {
+    console.error("❌ Error uploading lab test reports:", error);
+
+    if (files.length > 0) await deleteMultipleFiles(files);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while uploading lab test reports.",
     });
   }
 };

@@ -23,7 +23,8 @@ import {
   Cat,
   ShoppingCart,
   AlertCircle,
-  Microscope
+  Microscope,
+  SearchCheck
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -96,6 +97,7 @@ import CakeOrders from "@/screens/Cakes/Orders/CakeOrders"
 import SingleCakeOrders from "@/screens/Cakes/Orders/SingleCakeOrders"
 import PetShopAndBakeryOrders from "@/screens/Pet Shop/CommonOrders/PetShopAndBakeryOrders"
 import SingleOrderDeatils from "@/screens/Pet Shop/CommonOrders/SingleOrderDeatils"
+import AllTopSearches from "@/screens/searches/AllTopSearches"
 
 
 const DashboardPage = () => {
@@ -296,6 +298,13 @@ const DashboardPage = () => {
       label: "Physiotherapy",
     },
     {
+      title: "Top Searches",
+      icon: <SearchCheck className="h-5 w-5" />,
+      singleItem: true,
+      to: "/dashboard/top-searches",
+      label: "Top Searches",
+    },
+    {
       title: "Lab Test",
       icon: <Microscope className="h-5 w-5" />,
       items: [
@@ -310,7 +319,7 @@ const DashboardPage = () => {
       items: [
         { to: "/dashboard/type-of-vaccination-collection", label: "Collection Type" },
         { to: "/dashboard/all-vaccination", label: "All Vaccination" }
-        
+
       ],
     },
     {
@@ -640,8 +649,9 @@ const DashboardPage = () => {
             {/* Settings */}
             <Route path="/settings" element={hasAccess("/dashboard/settings") ? <Settings /> : <AccessDenied />} />
 
+            {/* Top searches */}
 
-
+            <Route path="/top-searches" element={hasAccess("/dashboard/top-searches") ? <AllTopSearches /> : <AccessDenied />} />
             {/* Lab Orders */}
             <Route path="/lab-test-booking" element={hasAccess("/dashboard/lab-test-booking") ? <AllLabOrders /> : <AccessDenied />} />
 

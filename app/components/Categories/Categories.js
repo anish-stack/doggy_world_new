@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    ActivityIndicator, 
-    Dimensions, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    ActivityIndicator,
+    Dimensions,
     ScrollView,
     Animated,
     Platform
@@ -89,14 +89,14 @@ export default function Categories({ Refresh }) {
             try {
                 console.log("Categories refreshing");
                 setLoading(true);
-                
+
                 // Reset animations when refreshing
                 fadeAnim.setValue(0);
                 translateY.setValue(20);
-                
+
                 const response = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/get-main-pet-category`);
                 setData(response.data.data);
-                
+
                 // Start animations after data is loaded
                 Animated.parallel([
                     Animated.timing(fadeAnim, {
@@ -110,21 +110,21 @@ export default function Categories({ Refresh }) {
                         useNativeDriver: true
                     })
                 ]).start();
-                
+
             } catch (error) {
                 console.error('Error fetching categories:', error);
             } finally {
                 setLoading(false);
             }
         };
-        
+
         fetchData();
     }, [Refresh, fadeAnim, translateY]);
 
     const memoizedData = useMemo(() => {
         if (!data) return [];
         return data
-            .filter((item) => item.position !== undefined)
+            .filter((item) => item.position !== undefined && item.isActive)
             .sort((a, b) => a.position - b.position);
     }, [data]);
 
@@ -140,7 +140,7 @@ export default function Categories({ Refresh }) {
     // Create rows of data
     const rows = useMemo(() => {
         if (!memoizedData.length) return [];
-        
+
         const result = [];
         for (let i = 0; i < memoizedData.length; i += numColumns) {
             result.push(memoizedData.slice(i, i + numColumns));
@@ -162,15 +162,15 @@ export default function Categories({ Refresh }) {
         <View style={styles.container}>
             {/* Background Pattern */}
             <BackgroundPattern />
-            
+
             {/* Header */}
             <View style={styles.headerContainer}>
                 <Text style={styles.headerTitle}>Pet Services</Text>
                 <Text style={styles.headerSubtitle}>Choose what your pet needs</Text>
             </View>
-            
+
             {/* Categories Grid */}
-            <Animated.View 
+            <Animated.View
                 style={[
                     styles.cardsContainer,
                     {
@@ -180,7 +180,7 @@ export default function Categories({ Refresh }) {
                 ]}
             >
                 {memoizedData && memoizedData.length > 0 ? (
-                    <ScrollView 
+                    <ScrollView
                         horizontal={false}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.scrollContent}
@@ -188,11 +188,11 @@ export default function Categories({ Refresh }) {
                         {rows.map((row, rowIndex) => (
                             <View key={`row-${rowIndex}`} style={styles.row}>
                                 {row.map((item, colIndex) => (
-                                    <View 
-                                        key={`item-${rowIndex}-${colIndex}`} 
+                                    <View
+                                        key={`item-${rowIndex}-${colIndex}`}
                                         style={[
                                             styles.cardWrapper,
-                                           
+
                                         ]}
                                     >
                                         <Card data={item} />
@@ -213,14 +213,14 @@ export default function Categories({ Refresh }) {
 
 const styles = StyleSheet.create({
     container: {
-        textAlign:'center',
+        textAlign: 'center',
         width: width,
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         marginTop: 10,
         marginBottom: 15,
         overflow: 'hidden',
-       
+
     },
     svgPattern: {
         position: 'absolute',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         overflow: 'hidden',
-       
+
     },
     loadingText: {
         marginTop: 15,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     cardsContainer: {
-        textAlign:'center',
+        textAlign: 'center',
         padding: 10,
         backgroundColor: 'transparent',
     },
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
     },
     row: {
-       
+
         flexDirection: 'row',
         justifyContent: 'space-around',
         flexWrap: 'wrap',

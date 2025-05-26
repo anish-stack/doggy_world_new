@@ -16,7 +16,7 @@ export default function OrderThankYou() {
     useEffect(() => {
         const fetchOrderDetails = async () => {
             try {
-                const response = await axios.get(`http://192.168.1.22:8000/api/v1/booking-details/${booking}`);
+                const response = await axios.get(`http://192.168.1.20:8000/api/v1/booking-details/${booking}`);
                 if (response.data.success) {
                     setOrderData(response.data.data);
                 } else {

@@ -37,7 +37,7 @@ export default function Doctors({Refresh}) {
       setLoading(false);
 
     } catch (err) {
-      console.log(err)
+      console.log('Failed to',err.response.data)
       setError('Failed to fetch doctors');
       setLoading(false);
     }

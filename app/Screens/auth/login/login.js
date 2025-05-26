@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  StatusBar,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -168,26 +169,20 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle={'dark-content'} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
         {/* Background with overlay */}
         <Image
-          source={{
-            uri: "https://images.unsplash.com/photo-1560743641-3914f2c45636?q=80&w=2574&auto=format&fit=crop"
-          }}
+          source={require('./logi.jpg')}
           style={styles.backgroundImage}
         />
         <View style={styles.overlay} />
 
         <View style={styles.content}>
-          {/* Logo placeholder */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logo}>
-              <Text style={styles.logoText}>🐾</Text>
-            </View>
-          </View>
+
 
           {/* Header */}
           <View style={styles.header}>
@@ -225,7 +220,7 @@ export default function Login() {
                   )}
                 </View>
                 <TextInput
-                  style={{ borderWidth: 1, padding: 10, color: 'black' }}
+                  style={{  padding: 16, color: 'black',backgroundColor: 'white', borderRadius: 10 }}
                   placeholder="Enter 6-digit OTP"
                   value={otp}
                   onChangeText={(text) => setOtp(text)}
@@ -325,8 +320,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   content: {
-    flex: 1,
-    justifyContent: "space-between",
+    height: height,
+    justifyContent: "center",
     padding: 24,
   },
   logoContainer: {
@@ -345,6 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   header: {
+    marginBottom: 24,
     alignItems: "center",
     marginTop: 16,
   },
@@ -360,18 +356,11 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   formContainer: {
-    backgroundColor: "#FFFFFF",
+    // backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 24,
-    marginTop: 32,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    marginTop: 10,
+
   },
   inputContainer: {
     marginBottom: 20,
@@ -384,7 +373,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: "#1A1A1A",
+    color: "#fff",
     fontWeight: "600",
     marginBottom: 8,
   },

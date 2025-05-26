@@ -23,7 +23,7 @@ import axios from "axios";
 import { useToken } from "../../hooks/useToken";
 import LottieView from 'lottie-react-native';
 
-const BASE_URL = "http://192.168.1.22:8000/api/v1";
+const BASE_URL = "http://192.168.1.20:8000/api/v1";
 const { width } = Dimensions.get('window');
 
 export default function Cakes_order() {
@@ -557,8 +557,9 @@ export default function Cakes_order() {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Cancel Order</Text>
                         <Text style={styles.modalSubtitle}>
-                            Please provide a reason for cancelling this order
+                            Please provide a reason for cancelling this order. Kindly note that cancellations are non-refundable.
                         </Text>
+
 
                         <View style={styles.reasonContainer}>
                             {["Changed my mind", "Ordered by mistake", "Found better option", "Other"].map((reason) => (
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
     },
     modalSubtitle: {
         fontSize: 14,
-        color: '#666',
+        color: 'red',
         marginBottom: 20,
     },
     reasonContainer: {

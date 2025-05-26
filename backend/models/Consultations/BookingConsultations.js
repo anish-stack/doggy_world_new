@@ -71,8 +71,22 @@ const BookingConsultationSchema = new mongoose.Schema({
         consultationDone: {
             type: Boolean,
             default: false
-        }
+        },
+
     },
+    prescriptionImages: [
+        {
+            url: {
+                type: String
+            },
+            public_id: {
+                type: String
+            },
+            date: {
+                type: Date
+            }
+        }
+    ],
     doctorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ConsultationDoctor',

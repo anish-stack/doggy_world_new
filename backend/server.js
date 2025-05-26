@@ -1,6 +1,7 @@
 const app = require('./app');
 const connectDB = require('./config/db');
 const logger = require('./config/logger');
+const LabTestMessageReport = require('./utils/whatsapp/sendLabTestReportUploadMessage');
 
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -8,11 +9,14 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 connectDB()
 
 const server = app.listen(PORT, () => {
+  console.log(`Bull Board available at http://localhost:${PORT}/admin/queues`);
   logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`, {
     component: 'Server',
     context: 'Startup'
   });
 });
+
+
 
 
 const gracefulShutdown = async (signal) => {

@@ -1,10 +1,26 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, formatDistanceToNowStrict, parseISO, differenceInDays } from "date-fns";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Calendar, User, FileText, Star, ArrowLeft, CalendarClock, XCircle, Pill, DollarSign, Clipboard, PawPrint, Clock, CheckCircle, CreditCard } from 'lucide-react';
+import {
+  Calendar,
+  User,
+  FileText,
+  Star,
+  ArrowLeft,
+  CalendarClock,
+  XCircle,
+  Pill,
+  DollarSign,
+  Clipboard,
+  PawPrint,
+  Clock,
+  CheckCircle,
+  CreditCard,
+  Upload,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +36,13 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,7 +85,13 @@ const SingleConsultation = () => {
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
+  const [prescriptionUploadInfo, setPrescriptionUploadInfo] = useState({
+    nextDateForConsultation: null,
+    consultationDone: false,
+  });
   // Reschedule state
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -76,20 +104,19 @@ const SingleConsultation = () => {
   const [ratingNote, setRatingNote] = useState("");
   const [ratingLoading, setRatingLoading] = useState(false);
 
-
   //prescription note
   const [prescriptionInfo, setPrescriptionInfo] = useState({
-    id: '',
-    description: '',
+    id: "",
+    description: "",
     medicenSuggest: [],
-    nextDateForConsultation: '',
-    consultationDone: true
-  })
+    nextDateForConsultation: "",
+    consultationDone: true,
+  });
 
-  const [newMedicine, setNewMedicine] = useState('');
+  const [newMedicine, setNewMedicine] = useState("");
 
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
-
+  const [prescriptionUploadOpen, setPrescriptionUploadOpen] = useState(false);
 
   // Cancel state
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -99,7 +126,9 @@ const SingleConsultation = () => {
   const fetchConsultation = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:8000/api/v1/consultations-booking/${id}`);
+      const response = await axios.get(
+        `http://localhost:8000/api/v1/consultations-booking/${id}`
+      );
       setConsultation(response.data.data);
 
       // Initialize reschedule date if consultation has a date
@@ -128,11 +157,52 @@ const SingleConsultation = () => {
   }, [id]);
 
 
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setImages(files);
+
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setImagePreviews(previews);
+  };
+
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append("nextDateForConsultation", prescriptionInfo.nextDateForConsultation);
+      formDataObj.append("consultationDone", prescriptionInfo.consultationDone);
+
+      images.forEach((img) => {
+        formDataObj.append("images", img);
+      });
+
+      const response = await axios.post(
+        `http://localhost:8000/api/v1/consultations-prescriptions-images/${id}`,
+        formDataObj,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      console.log("Upload successful:", response.data);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   // Action validations
-  const canCancel = consultation?.status === "Confirmed" || consultation?.status === "Rescheduled";
-  const canReschedule = consultation?.status === "Confirmed" || consultation?.status === "Rescheduled";
+  const canCancel =
+    consultation?.status === "Confirmed" ||
+    consultation?.status === "Rescheduled";
+  const canReschedule =
+    consultation?.status === "Confirmed" ||
+    consultation?.status === "Rescheduled";
   const canRate = consultation?.status === "Completed" && !consultation?.Rating;
 
   const handleReschedule = async () => {
@@ -201,7 +271,9 @@ const SingleConsultation = () => {
   const handleCancel = async () => {
     setCancelLoading(true);
     try {
-      await axios.get(`http://localhost:8000/api/v1/consultations-cancel?id=${id}`);
+      await axios.get(
+        `http://localhost:8000/api/v1/consultations-cancel?id=${id}`
+      );
 
       toast.success("Consultation cancelled successfully");
       setCancelOpen(false);
@@ -253,7 +325,11 @@ const SingleConsultation = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <Button variant="ghost" className="mb-6 flex items-center gap-2" onClick={goBack}>
+      <Button
+        variant="ghost"
+        className="mb-6 flex items-center gap-2"
+        onClick={goBack}
+      >
         <ArrowLeft className="h-4 w-4" />
         Back to Consultations
       </Button>
@@ -271,15 +347,24 @@ const SingleConsultation = () => {
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl font-bold">Consultation Details</CardTitle>
+                  <CardTitle className="text-2xl font-bold">
+                    Consultation Details
+                  </CardTitle>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
-                    <p className="text-sm text-muted-foreground">ID: {consultation._id}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ID: {consultation._id}
+                    </p>
                     <p className="text-sm text-muted-foreground sm:before:content-['•'] sm:before:mx-2">
                       Ref: {consultation.bookingRef}
                     </p>
                   </div>
                 </div>
-                <Badge className={statusColors[consultation.status] || "bg-gray-100 text-gray-800"}>
+                <Badge
+                  className={
+                    statusColors[consultation.status] ||
+                    "bg-gray-100 text-gray-800"
+                  }
+                >
                   {consultation.status || "Unknown"}
                 </Badge>
               </div>
@@ -302,7 +387,12 @@ const SingleConsultation = () => {
                           Date & Time
                         </h3>
                         <p className="text-muted-foreground mt-1">
-                          {consultation.date ? format(new Date(consultation.date), "MMMM dd, yyyy") : "Not scheduled"}
+                          {consultation.date
+                            ? format(
+                              new Date(consultation.date),
+                              "MMMM dd, yyyy"
+                            )
+                            : "Not scheduled"}
                           {consultation.time ? ` at ${consultation.time}` : ""}
                         </p>
                       </div>
@@ -315,8 +405,16 @@ const SingleConsultation = () => {
                         <div className="mt-2 flex items-center gap-3">
                           {consultation.doctorId?.image?.url ? (
                             <Avatar className="h-12 w-12 border">
-                              <AvatarImage src={consultation.doctorId.image.url || "/placeholder.svg"} alt={consultation.doctorId.name} />
-                              <AvatarFallback>{consultation.doctorId.name?.charAt(0)}</AvatarFallback>
+                              <AvatarImage
+                                src={
+                                  consultation.doctorId.image.url ||
+                                  "/placeholder.svg"
+                                }
+                                alt={consultation.doctorId.name}
+                              />
+                              <AvatarFallback>
+                                {consultation.doctorId.name?.charAt(0)}
+                              </AvatarFallback>
                             </Avatar>
                           ) : (
                             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -324,14 +422,24 @@ const SingleConsultation = () => {
                             </div>
                           )}
                           <div>
-                            <p className="font-medium">{consultation.doctorId?.name || "N/A"}</p>
+                            <p className="font-medium">
+                              {consultation.doctorId?.name || "N/A"}
+                            </p>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline" className="text-xs">
-                                {formatCurrency(consultation.doctorId?.price || 0)}
+                                {formatCurrency(
+                                  consultation.doctorId?.price || 0
+                                )}
                               </Badge>
                               {consultation.doctorId?.discount && (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                                  {formatCurrency(consultation.doctorId.discount)} off
+                                <Badge
+                                  variant="outline"
+                                  className="bg-green-50 text-green-700 text-xs"
+                                >
+                                  {formatCurrency(
+                                    consultation.doctorId.discount
+                                  )}{" "}
+                                  off
                                 </Badge>
                               )}
                             </div>
@@ -345,19 +453,30 @@ const SingleConsultation = () => {
                           Consultation Type
                         </h3>
                         <div className="mt-2 space-y-2">
-                          <p className="font-medium">{consultation.consultationType?.name || "N/A"}</p>
+                          <p className="font-medium">
+                            {consultation.consultationType?.name || "N/A"}
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline" className="text-xs">
-                              {formatCurrency(consultation.consultationType?.price || 0)}
+                              {formatCurrency(
+                                consultation.consultationType?.price || 0
+                              )}
                             </Badge>
                             {consultation.consultationType?.discount_price && (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                                Discounted: {formatCurrency(consultation.consultationType.discount_price)}
+                              <Badge
+                                variant="outline"
+                                className="bg-green-50 text-green-700 text-xs"
+                              >
+                                Discounted:{" "}
+                                {formatCurrency(
+                                  consultation.consultationType.discount_price
+                                )}
                               </Badge>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {consultation.consultationType?.description || "No description available"}
+                            {consultation.consultationType?.description ||
+                              "No description available"}
                           </p>
                         </div>
                       </div>
@@ -378,32 +497,48 @@ const SingleConsultation = () => {
                                   : "bg-yellow-100 text-yellow-800"
                               }
                             >
-                              {consultation.paymentComplete ? "Paid" : "Pending"}
+                              {consultation.paymentComplete
+                                ? "Paid"
+                                : "Pending"}
                             </Badge>
-                            <Badge variant="outline">{consultation.paymentCollectionType}</Badge>
+                            <Badge variant="outline">
+                              {consultation.paymentCollectionType}
+                            </Badge>
                           </div>
 
                           {consultation.paymentDetails && (
                             <div className="mt-3 space-y-1">
                               <p className="text-sm">
                                 <span className="font-medium">Amount:</span>{" "}
-                                {formatCurrency(parseInt(consultation.paymentDetails.amount) / 100)}
+                                {formatCurrency(
+                                  parseInt(consultation.paymentDetails.amount) /
+                                  100
+                                )}
                               </p>
                               <p className="text-sm">
                                 <span className="font-medium">Order ID:</span>{" "}
                                 {consultation.paymentDetails.razorpay_order_id}
                               </p>
-                              {consultation.paymentDetails.razorpay_payment_id && (
-                                <p className="text-sm">
-                                  <span className="font-medium">Payment ID:</span>{" "}
-                                  {consultation.paymentDetails.razorpay_payment_id}
-                                </p>
-                              )}
+                              {consultation.paymentDetails
+                                .razorpay_payment_id && (
+                                  <p className="text-sm">
+                                    <span className="font-medium">
+                                      Payment ID:
+                                    </span>{" "}
+                                    {
+                                      consultation.paymentDetails
+                                        .razorpay_payment_id
+                                    }
+                                  </p>
+                                )}
                               <p className="text-sm">
-                                <span className="font-medium">Payment Status:</span>{" "}
+                                <span className="font-medium">
+                                  Payment Status:
+                                </span>{" "}
                                 <Badge
                                   className={
-                                    consultation.paymentDetails.payment_status === "paid"
+                                    consultation.paymentDetails
+                                      .payment_status === "paid"
                                       ? "bg-green-100 text-green-800"
                                       : "bg-yellow-100 text-yellow-800"
                                   }
@@ -414,7 +549,9 @@ const SingleConsultation = () => {
                               <p className="text-sm">
                                 <span className="font-medium">Date:</span>{" "}
                                 {format(
-                                  new Date(consultation.paymentDetails.createdAt),
+                                  new Date(
+                                    consultation.paymentDetails.createdAt
+                                  ),
                                   "MMM dd, yyyy 'at' hh:mm a"
                                 )}
                               </p>
@@ -431,15 +568,22 @@ const SingleConsultation = () => {
                         <div className="mt-2 space-y-2">
                           <p className="text-sm">
                             <span className="font-medium">Created:</span>{" "}
-                            {format(new Date(consultation.createdAt), "MMM dd, yyyy 'at' hh:mm a")}
+                            {format(
+                              new Date(consultation.createdAt),
+                              "MMM dd, yyyy 'at' hh:mm a"
+                            )}
                           </p>
                           <p className="text-sm">
                             <span className="font-medium">Last Updated:</span>{" "}
-                            {format(new Date(consultation.updatedAt), "MMM dd, yyyy 'at' hh:mm a")}
+                            {format(
+                              new Date(consultation.updatedAt),
+                              "MMM dd, yyyy 'at' hh:mm a"
+                            )}
                           </p>
                           {consultation.cancelledBy && (
                             <p className="text-sm">
-                              <span className="font-medium">Cancelled By:</span> {consultation.cancelledBy}
+                              <span className="font-medium">Cancelled By:</span>{" "}
+                              {consultation.cancelledBy}
                             </p>
                           )}
                         </div>
@@ -456,25 +600,40 @@ const SingleConsultation = () => {
                           <PawPrint className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold">{consultation.pet?.petname || "N/A"}</h3>
-                          <p className="text-muted-foreground">{consultation.pet?.petbreed || "Unknown Breed"}</p>
+                          <h3 className="text-xl font-bold">
+                            {consultation.pet?.petname || "N/A"}
+                          </h3>
+                          <p className="text-muted-foreground">
+                            {consultation.pet?.petbreed || "Unknown Breed"}
+                          </p>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                             <div>
-                              <p className="text-sm font-medium">Date of Birth</p>
+                              <p className="text-sm font-medium">
+                                Date of Birth
+                              </p>
                               <p className="text-muted-foreground">
                                 {consultation.pet?.petdob
-                                  ? format(new Date(consultation.pet.petdob), "MMMM dd, yyyy")
+                                  ? format(
+                                    new Date(consultation.pet.petdob),
+                                    "MMMM dd, yyyy"
+                                  )
                                   : "N/A"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm font-medium">Owner Contact</p>
-                              <p className="text-muted-foreground">{consultation.pet?.petOwnertNumber || "N/A"}</p>
+                              <p className="text-sm font-medium">
+                                Owner Contact
+                              </p>
+                              <p className="text-muted-foreground">
+                                {consultation.pet?.petOwnertNumber || "N/A"}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium">Pet ID</p>
-                              <p className="text-muted-foreground">{consultation.pet?._id || "N/A"}</p>
+                              <p className="text-muted-foreground">
+                                {consultation.pet?._id || "N/A"}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -489,9 +648,13 @@ const SingleConsultation = () => {
                       <CardContent className="pt-6">
                         <div className="flex items-center gap-2 mb-4">
                           <Clipboard className="h-5 w-5 text-primary" />
-                          <h3 className="text-lg font-medium">Prescription Details</h3>
+                          <h3 className="text-lg font-medium">
+                            Prescription Details
+                          </h3>
                           {consultation.prescription.consultationDone && (
-                            <Badge className="bg-green-100 text-green-800 ml-auto">Consultation Completed</Badge>
+                            <Badge className="bg-green-100 text-green-800 ml-auto">
+                              Consultation Completed
+                            </Badge>
                           )}
                         </div>
 
@@ -499,39 +662,94 @@ const SingleConsultation = () => {
                           <div>
                             <p className="text-sm font-medium">Description</p>
                             <p className="text-muted-foreground mt-1">
-                              {consultation.prescription.description || "No description provided"}
+                              {consultation.prescription.description ||
+                                "No description provided"}
                             </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">Uploaded Prescription</p>
+
+                            <div className="mt-2 flex flex-wrap gap-4">
+                              {consultation.prescriptionImages && consultation.prescriptionImages.length > 0 ? (
+                                consultation.prescriptionImages.map((item, index) => {
+                                  const uploadedDate = parseISO(item.date); // item.date should be ISO string like "2025-05-17T12:00:00Z"
+                                  const daysSinceUpload = differenceInDays(new Date(), uploadedDate);
+                                  const daysLeft = 7 - daysSinceUpload;
+
+                                  return (
+                                    <div key={index} className="relative w-32 h-32">
+                                      {/* Red badge if within 7 days */}
+                                      {daysLeft > 0 && (
+                                        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-md z-10">
+                                          Auto-delete in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                                        </div>
+                                      )}
+
+                                      <a
+                                        href={item?.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block w-full h-full overflow-hidden rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-shadow"
+                                      >
+                                        <img
+                                          src={item?.url}
+                                          alt={`Prescription ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </a>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-sm text-gray-500">No prescription provided</p>
+                              )}
+                            </div>
                           </div>
 
                           <div>
-                            <p className="text-sm font-medium">Recommended Medicines</p>
+                            <p className="text-sm font-medium">
+                              Recommended Medicines
+                            </p>
                             {consultation.prescription.medicenSuggest &&
-                              consultation.prescription.medicenSuggest.length > 0 ? (
+                              consultation.prescription.medicenSuggest.length >
+                              0 ? (
                               <ul className="mt-2 space-y-2">
-                                {consultation.prescription.medicenSuggest.map((medicine, index) => (
-                                  <li key={index} className="flex items-center gap-2">
-                                    <Pill className="h-4 w-4 text-primary" />
-                                    <span>{medicine}</span>
-                                  </li>
-                                ))}
+                                {consultation.prescription.medicenSuggest.map(
+                                  (medicine, index) => (
+                                    <li
+                                      key={index}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Pill className="h-4 w-4 text-primary" />
+                                      <span>{medicine}</span>
+                                    </li>
+                                  )
+                                )}
                               </ul>
                             ) : (
-                              <p className="text-muted-foreground mt-1">No medicines suggested</p>
+                              <p className="text-muted-foreground mt-1">
+                                No medicines suggested
+                              </p>
                             )}
                           </div>
 
-                          {consultation.prescription.nextDateForConsultation && (
-                            <div>
-                              <p className="text-sm font-medium">Next Consultation Date</p>
-                              <p className="text-muted-foreground mt-1 flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-primary" />
-                                {format(
-                                  new Date(consultation.prescription.nextDateForConsultation),
-                                  "MMMM dd, yyyy"
-                                )}
-                              </p>
-                            </div>
-                          )}
+                          {consultation.prescription
+                            .nextDateForConsultation && (
+                              <div>
+                                <p className="text-sm font-medium">
+                                  Next Consultation Date
+                                </p>
+                                <p className="text-muted-foreground mt-1 flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-primary" />
+                                  {format(
+                                    new Date(
+                                      consultation.prescription.nextDateForConsultation
+                                    ),
+                                    "MMMM dd, yyyy"
+                                  )}
+                                </p>
+                              </div>
+                            )}
                         </div>
                       </CardContent>
                     </Card>
@@ -575,15 +793,30 @@ const SingleConsultation = () => {
               {(canReschedule || canCancel) && <Separator />}
 
               {canRate && (
-                <Button className="w-full flex items-center gap-2" onClick={() => setRatingOpen(true)}>
+                <Button
+                  className="w-full flex items-center gap-2"
+                  onClick={() => setRatingOpen(true)}
+                >
                   <Star className="h-4 w-4" />
                   Rate Consultation
                 </Button>
               )}
 
-              <Button variant={'secondary'} className="w-full flex items-center gap-2" onClick={() => setPrescriptionOpen(true)}>
+              <Button
+                variant={"secondary"}
+                className="w-full flex items-center gap-2"
+                onClick={() => setPrescriptionOpen(true)}
+              >
                 <Star className="h-4 w-4" />
-                Add Prescription
+                Write Prescription
+              </Button>
+              <Button
+                variant={"secondary"}
+                className="w-full flex items-center gap-2"
+                onClick={() => setPrescriptionUploadOpen(true)}
+              >
+                <Upload className="h-4 w-4" />
+                Upload Prescription
               </Button>
               {consultation.Rating && (
                 <div className="p-4 bg-muted rounded-lg">
@@ -595,13 +828,19 @@ const SingleConsultation = () => {
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
-                        className={`h-5 w-5 ${i < consultation.Rating.number ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                        className={`h-5 w-5 ${i < consultation.Rating.number
+                          ? "text-yellow-500 fill-yellow-500"
+                          : "text-gray-300"
                           }`}
                       />
                     ))}
-                    <span className="ml-2 text-sm font-medium">{consultation.Rating.number}/5</span>
+                    <span className="ml-2 text-sm font-medium">
+                      {consultation.Rating.number}/5
+                    </span>
                   </div>
-                  {consultation.Rating.note && <p className="text-sm mt-2">{consultation.Rating.note}</p>}
+                  {consultation.Rating.note && (
+                    <p className="text-sm mt-2">{consultation.Rating.note}</p>
+                  )}
                 </div>
               )}
 
@@ -625,14 +864,19 @@ const SingleConsultation = () => {
                   )}
                 </div>
                 <p className="text-sm mt-2">
-                  Method: <span className="font-medium">{consultation.paymentCollectionType}</span>
+                  Method:{" "}
+                  <span className="font-medium">
+                    {consultation.paymentCollectionType}
+                  </span>
                 </p>
               </div>
             </CardContent>
           </Card>
         </div>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">Consultation not found</div>
+        <div className="text-center py-8 text-muted-foreground">
+          Consultation not found
+        </div>
       )}
 
       {/* Reschedule Dialog */}
@@ -640,7 +884,9 @@ const SingleConsultation = () => {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Reschedule Consultation</DialogTitle>
-            <DialogDescription>Select a new date and time for your consultation.</DialogDescription>
+            <DialogDescription>
+              Select a new date and time for your consultation.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -682,7 +928,6 @@ const SingleConsultation = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       <Dialog open={prescriptionOpen} onOpenChange={setPrescriptionOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -758,7 +1003,9 @@ const SingleConsultation = () => {
                       onClick={() =>
                         setPrescriptionInfo((prev) => ({
                           ...prev,
-                          medicenSuggest: prev.medicenSuggest.filter((_, i) => i !== index),
+                          medicenSuggest: prev.medicenSuggest.filter(
+                            (_, i) => i !== index
+                          ),
                         }))
                       }
                       className="text-red-500 text-sm"
@@ -788,7 +1035,10 @@ const SingleConsultation = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPrescriptionOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setPrescriptionOpen(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleAddPrescription} disabled={loading}>
@@ -798,13 +1048,89 @@ const SingleConsultation = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={prescriptionUploadOpen} onOpenChange={setPrescriptionUploadOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Upload Prescriptions</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleUploadSubmit}>
+            <div className="grid gap-4 py-4">
+              {/* Next Consultation Date */}
+              <div className="grid gap-2">
+                <Label>Next Consultation Date</Label>
+                <CalendarComponent
+                  mode="single"
+                  selected={prescriptionInfo.nextDateForConsultation}
+                  onSelect={(date) =>
+                    setPrescriptionInfo((prev) => ({
+                      ...prev,
+                      nextDateForConsultation: date,
+                    }))
+                  }
+                  disabled={(date) => date < new Date()}
+                  className="rounded-md border"
+                />
+              </div>
+
+              {/* Consultation Done */}
+              <div className="flex items-center gap-2">
+                <Label>Consultation Completed</Label>
+                <input
+                  type="checkbox"
+                  checked={prescriptionInfo.consultationDone}
+                  onChange={(e) =>
+                    setPrescriptionInfo((prev) => ({
+                      ...prev,
+                      consultationDone: e.target.checked,
+                    }))
+                  }
+                />
+              </div>
+
+              {/* Upload Multiple Images */}
+              <div className="grid gap-2">
+                <Label>Upload Prescription Images</Label>
+                <Input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  multiple
+                  onChange={handleImageChange}
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {imagePreviews.map((preview, index) => (
+                    <img
+                      key={index}
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-20 h-20 object-contain border rounded"
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPrescriptionUploadOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Uploading..." : "Upload"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Rating Dialog */}
       <Dialog open={ratingOpen} onOpenChange={setRatingOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Rate Your Consultation</DialogTitle>
-            <DialogDescription>How would you rate your experience with this consultation?</DialogDescription>
+            <DialogDescription>
+              How would you rate your experience with this consultation?
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -812,9 +1138,17 @@ const SingleConsultation = () => {
               <Label>Rating</Label>
               <div className="flex items-center gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <button key={i} type="button" onClick={() => setRatingValue(i + 1)} className="focus:outline-none">
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setRatingValue(i + 1)}
+                    className="focus:outline-none"
+                  >
                     <Star
-                      className={`h-8 w-8 ${i < ratingValue ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`}
+                      className={`h-8 w-8 ${i < ratingValue
+                        ? "text-yellow-500 fill-yellow-500"
+                        : "text-gray-300"
+                        }`}
                     />
                   </button>
                 ))}
@@ -849,7 +1183,8 @@ const SingleConsultation = () => {
           <DialogHeader>
             <DialogTitle>Cancel Consultation</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this consultation? This action cannot be undone.
+              Are you sure you want to cancel this consultation? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -857,7 +1192,11 @@ const SingleConsultation = () => {
             <Button variant="outline" onClick={() => setCancelOpen(false)}>
               No, Keep It
             </Button>
-            <Button variant="destructive" onClick={handleCancel} disabled={cancelLoading}>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={cancelLoading}
+            >
               {cancelLoading ? "Cancelling..." : "Yes, Cancel It"}
             </Button>
           </DialogFooter>

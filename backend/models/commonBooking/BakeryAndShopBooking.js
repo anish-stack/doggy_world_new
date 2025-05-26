@@ -10,7 +10,7 @@ const BakeryAndShopBookingSchema = new mongoose.Schema({
 
     orderNumber: {
         type: String,
-        unique: true,
+       
         required: true,
         default: () => 'ORD-' + Math.floor(100000 + Math.random() * 900000)
     },

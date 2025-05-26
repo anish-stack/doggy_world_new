@@ -13,7 +13,7 @@ const errorHandler = require('./middleware/errorHandler');
 const router = require('./routes/routes');
 const sendNotification = require('./utils/sendNotification');
 const { handleWebhook } = require('./controller/Consultations/BookingConsultaation');
-
+const setupBullBoard = require('./bullBoard');
 
 
 dotenv.config();
@@ -76,12 +76,13 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'your-secret-key'));
 
-
+setupBullBoard(app);
 if (NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
 // Routes
+app.get('/', (req, res) => res.send('API Running'));  
 app.use('/api/v1',router)
 app.post('/razorpay-hook', express.raw({ type: 'application/json' }), handleWebhook);
 
@@ -93,7 +94,9 @@ app.use((req, res) => {
   });
 });
 
+
 // Global error handler
+
 app.use(errorHandler);
 
 module.exports = app;

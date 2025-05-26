@@ -69,12 +69,23 @@ export default function BookingConsultation() {
             setLoading(true);
             const { data } = await axios.get(`${API_END_POINT_URL_LOCAL}/api/v1/consultation-doctor`);
 
-            // Sort doctors by position
             const sortedDoctors = data.data.sort((a, b) => a.position - b.position);
-            setDoctors(sortedDoctors);
 
-            if (sortedDoctors.length > 0) {
-                setSelectedDoctor(sortedDoctors[0]);
+            // Filter doctors based on the type
+            const findDoctorByFilter = sortedDoctors.filter((doctor) => {
+                if (sortedDoctors.some(d => d.typeof === type)) {
+                    // If at least one match, only return those that match the type
+                    return doctor.typeof === type;
+                } else {
+                    // Otherwise, return all except Homeopathic Consultation
+                    return doctor.typeof !== "Homeopathic Consultation";
+                }
+            });
+
+            setDoctors(findDoctorByFilter);
+
+            if (findDoctorByFilter.length > 0) {
+                setSelectedDoctor(findDoctorByFilter[0]);
             }
         } catch (err) {
             setError('Failed to load doctors. Please try again.');
@@ -83,7 +94,6 @@ export default function BookingConsultation() {
             setLoading(false);
         }
     };
-
     useEffect(() => {
         if (selectedDoctor) {
             generateDaysAndTimeSlots(selectedDoctor);
@@ -335,7 +345,7 @@ export default function BookingConsultation() {
                                 razorpay_order_id: paymentData.razorpay_order_id,
                                 razorpay_signature: paymentData.razorpay_signature,
                                 bookingId: booking._id,
-                                type:'consultation',
+                                type: 'consultation',
                                 fcm: fcmToken
                             }
                         );

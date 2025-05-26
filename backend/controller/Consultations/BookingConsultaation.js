@@ -22,6 +22,7 @@ const sendPhysioComplete = require("../../utils/whatsapp/sendPhsiyoMessage");
 const { sendEmail } = require("../../utils/emailUtility");
 const CakeBooking = require("../../models/Cake Models/CakeBooking");
 const { invalidateConsultationCache } = require("../Pet controller/PetOrdersControllers");
+const EmailSendQueue = require("../../queues/EmailSendQueues");
 const razorpayUtils = new RazorpayUtils(
   process.env.RAZORPAY_KEY_ID,
   process.env.RAZORPAY_KEY_SECRET
@@ -1142,7 +1143,24 @@ async function handleConsultationBooking(bookingId, paymentId, fcm) {
     ownerNumber: booking.pet?.petOwnertNumber
   };
 
-  await sendCustomeConulationEmail({ data: emailData });
+
+  EmailSendQueue.add(
+    {
+      type: 'consultation',
+      body: emailData
+    },
+    {
+      delay: 50000 // 50 seconds
+    }
+  )
+    .then(job => {
+      console.log(`Job added with ID: ${job.id}`);
+    })
+    .catch(err => {
+      console.error('Error adding job to queue:', err);
+    });
+
+  // await sendCustomeConulationEmail({ data: emailData });
 
   if (fcm) {
     const title = 'Booking Confirmed 🎉';
@@ -1157,6 +1175,7 @@ async function handleConsultationBooking(bookingId, paymentId, fcm) {
     doctorName: booking.doctorId?.name,
     amount: booking.paymentDetails?.amount
   };
+
 
   await sendConsultationComplete(booking.pet?.petOwnertNumber, smsContent);
 
@@ -1206,8 +1225,23 @@ async function handlePhysioBooking(bookingId, paymentId, fcm) {
       ownerNumber: booking.pet?.petOwnertNumber
     };
 
+    EmailSendQueue.add(
+      {
+        type: 'physio',
+        body: emailData
+      },
+      {
+        delay: 50000 // 50 seconds
+      }
+    )
+      .then(job => {
+        console.log(`Job added for physio with  ID: ${job.id}`);
+      })
+      .catch(err => {
+        console.error('Error adding job to queue:', err);
+      });
     // Send confirmation email
-    await sendCustomePhysioEmail({ data: emailData });
+    // 
 
     // Send push notification if FCM token is available
     if (booking?.fcmToken) {
@@ -1273,13 +1307,22 @@ async function handleProductOrder(bookingId, paymentId, fcm) {
     const emailData = createOrderEmailData(booking);
 
     // Send email notification
-    try {
-      await sendEmail(emailData);
-      console.log(`Order confirmation email sent for order: ${booking.orderNumber}`);
-    } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError);
-      // Continue execution even if email fails
-    }
+    EmailSendQueue.add(
+      {
+        type: 'product',
+        body: emailData
+      },
+      {
+        delay: 50000 // 50 seconds
+      }
+    )
+      .then(job => {
+        console.log(`Job added for product with  ID: ${job.id}`);
+      })
+      .catch(err => {
+        console.error('Error adding job to queue:', err);
+      });
+
 
     // Send push notification if FCM token is available
     if (booking.fcmToken) {
@@ -1357,13 +1400,23 @@ async function handleCakeOrder(bookingId, paymentId, fcm) {
     const emailData = createCakeOrderEmailData(booking);
 
     // Send email notification
-    try {
-      await sendEmail(emailData);
-      console.log(`Order confirmation email sent for order: ${booking.orderNumber}`);
-    } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError);
-      // Continue execution even if email fails
-    }
+    EmailSendQueue.add(
+      {
+        type: 'product',
+        body: emailData
+      },
+      {
+        delay: 50000 // 50 seconds
+      }
+    )
+      .then(job => {
+        console.log(`Job added for product cake with  ID: ${job.id}`);
+      })
+      .catch(err => {
+        console.error('Error adding job to queue:', err);
+      });
+
+
 
     // Send push notification if FCM token is available
     if (booking.fcmToken) {
@@ -1419,7 +1472,23 @@ async function handleVaccineBooking(bookingId, paymentId, fcm) {
     ownerNumber: booking.pet?.petOwnertNumber
   };
 
-  await sendCustomeConulationEmail({ data: emailData });
+  // Send email notification
+  EmailSendQueue.add(
+    {
+      type: 'consultation',
+      body: emailData
+    },
+    {
+      delay: 50000 // 50 seconds
+    }
+  )
+    .then(job => {
+      console.log(`Job added for product cake with  ID: ${job.id}`);
+    })
+    .catch(err => {
+      console.error('Error adding job to queue:', err);
+    });
+  // await sendCustomeConulationEmail({ data: emailData });
 
   if (booking?.fcmToken) {
     const title = 'Booking Confirmed 🎉';
@@ -1429,6 +1498,8 @@ async function handleVaccineBooking(bookingId, paymentId, fcm) {
 
   return booking;
 }
+
+
 async function handlelabTestBooking(bookingId, paymentId, fcm) {
 
   const booking = await LabTestBooking.findById(bookingId)

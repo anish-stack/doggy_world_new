@@ -1,4 +1,4 @@
-import { View, StyleSheet, StatusBar } from "react-native";
+import { View, StyleSheet, StatusBar, Dimensions } from "react-native";
 import * as Sentry from "@sentry/react-native";
 import './context/firebaseConfig';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,7 +15,7 @@ import LottieView from "lottie-react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import axios from "axios";
 import { API_END_POINT_URL_LOCAL } from "./constant/constant";
-
+const { width, height } = Dimensions.get("window");
 // Import all screens
 import Home from "./Screens/Home/Home";
 import Register from "./Screens/auth/register/register";
@@ -42,17 +42,8 @@ import PetShop from "./Screens/Pet_Shop/PetShop";
 import Dynamic_Shop from "./Screens/Pet_Shop/_Shop/Dynamic_Shop";
 import Dynmaic_Products_Shop from "./Screens/Pet_Shop/_Shop/Dynmaic_Products_Shop";
 import Dynamic_Details_Shop from "./Screens/Pet_Shop/_Shop/Dynamic_Details_Shop";
-// import Lab_Test from "./Screens/Labs/Lab_Test";
-// import Lab_Clinic from "./Screens/Labs/Lab_Clinic";
-// import TestPage from "./Screens/Labs/TestPage";
-// import Book_Test from "./Screens/Labs/Book_Test";
-// import Single_Test from "./Screens/Labs/Single_Test";
 import SuperficialNoter from "./Screens/SuperficialCart/SuperficialNoter";
 import SuperficialCart from "./Screens/SuperficialCart/SuperficialCart";
-// import Vaccinations from "./Screens/Vaccination/Vaccinations";
-// import VaccineDetails from "./Screens/Vaccination/VaccineDetails";
-// import Vaccination from "./Screens/Vaccination/Vaccination";
-// import BookVaccination from "./Screens/Vaccination/BookVaccination";
 import Coming_soon from "./Screens/Coming_soon/Coming_soon";
 import Physiotherapy from "./Screens/Physiotherapy/Physiotherapy";
 import PhysiotherapyDetails from "./Screens/Physiotherapy/PhysiotherapyDetails";
@@ -94,54 +85,61 @@ import CakeOrderThankyou from "./Screens/Services/Bakery/Categories/CakeOrderTha
 import Appointments from "./NewProfileScreens/Appointments/Appointments";
 import ConsultationDetail from "./NewProfileScreens/Appointments/ConsultationDetail";
 import ViewVaccineDetails from "./Profile_Screens/Orders/lab/ViewVaccineDetails";
+import { getApp } from 'firebase/app';
+import ProductDetailScreen from "./Screens/Services/Bakery/Dynamic_Screen/SingleBakerProduct";
 
-// Prevent SplashScreen from hiding automatically
 SplashScreen.preventAutoHideAsync();
 
-// Initialize Sentry
 Sentry.init({
   dsn: "https://5b208c724079bf3e5789b51da0190912@o4508873810771970.ingest.us.sentry.io/4509020408643584",
   sendDefaultPii: true,
 });
 
-// Create stack navigator
 const Stack = createNativeStackNavigator();
 
-// Screen configurations to avoid redundancy
 const screenConfigs = {
-
   noHeader: { headerShown: false },
-
   withTitle: (title) => ({ headerShown: true, title }),
 };
 
-// Main App component
+// Loading component to display during initialization
+const AppLoading = () => (
+  <View style={styles.loadingContainer}>
+    <LottieView
+      source={require("./animations/loading.json")}
+      autoPlay
+      loop
+      style={styles.loadingAnimation}
+    />
+  </View>
+);
+
 const App = () => {
   const { refreshUser } = getUser();
   const navigationContainerRef = useRef(null);
   const [currentRoute, setCurrentRoute] = useState("");
   const { labTestsCount } = useSelector((state) => state.labCart);
   const [showGif, setShowGif] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { isGranted, requestPermission, deviceId, fcmToken } = useNotificationPermission();
 
-  // Track route change
+  // Memoized navigation state change handler
   const handleNavigationStateChange = useCallback(() => {
     if (navigationContainerRef.current) {
       const route = navigationContainerRef.current.getCurrentRoute();
       if (route) {
         setCurrentRoute(route.name);
-        console.log("Navigated to route:", route.name);
       }
     }
   }, []);
 
+  // Setup navigation listeners
   useEffect(() => {
     const unsubscribe = navigationContainerRef.current?.addListener(
       "state",
       handleNavigationStateChange
     );
 
-    // Initial call
     handleNavigationStateChange();
 
     return () => {
@@ -149,89 +147,83 @@ const App = () => {
     };
   }, [handleNavigationStateChange]);
 
-  // Show GIF if labTestsCount > 0
+  // Handle lab tests count changes
   useEffect(() => {
     if (labTestsCount > 0) {
-      console.log("Lab tests added:", labTestsCount);
       setShowGif(true);
-
       const timer = setTimeout(() => {
         setShowGif(false);
-        console.log("GIF hidden after 3s");
       }, 3000);
-
       return () => clearTimeout(timer);
     }
   }, [labTestsCount]);
 
-  // Send FCM token to server
-  const sendTokenOfFcm = async (data) => {
-    console.log("Sending FCM token to server:", data);
+  // Send FCM token to server - memoized to prevent recreation
+  const sendTokenOfFcm = useCallback(async (data) => {
     try {
-      const response = await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/Fcm/register`, data);
-      console.log("FCM token sent successfully:", response.data);
+      await axios.post(`${API_END_POINT_URL_LOCAL}/api/v1/Fcm/register`, data);
     } catch (error) {
-      console.log("❌ FCM registration error:", error?.response?.data || error.message);
+      // Silent error handling in production
     }
-  }
+  }, []);
 
-  // Handle notification permission
+  // Handle notification permission - memoized
   const handleRequestNotificationPermission = useCallback(async () => {
-    console.log("Requesting notification permission...");
     try {
       const granted = await requestPermission();
-      console.log("Notification permission granted:", granted);
-
-      if (granted && deviceId) {
+      if (granted && deviceId && fcmToken) {
         const data = { fcmToken, deviceId };
-        sendTokenOfFcm(data);
-      } else {
-        console.log("Notification not granted or deviceId missing");
+        await sendTokenOfFcm(data);
       }
     } catch (error) {
-      console.log("❌ Notification permission error:", error);
+      // Silent error handling in production
     }
-  }, [requestPermission, deviceId, sendTokenOfFcm]);
+  }, [requestPermission, deviceId, fcmToken, sendTokenOfFcm]);
 
   // App initialization effect
   useEffect(() => {
     const loadApp = async () => {
-      console.log("🔄 App initialization started...");
       try {
-        await refreshUser();
-        console.log("✅ User refreshed");
+      
+        getApp();
 
+        await refreshUser();
+
+        // Request notification permissions
         await handleRequestNotificationPermission();
 
+        // Simulate a minimum loading time for better UX
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Hide splash screen and set loading state
         await SplashScreen.hideAsync();
-        console.log("✅ Splash screen hidden, app ready");
+        setIsLoading(false);
       } catch (error) {
-        console.log("❌ App initialization error:", error);
-        SplashScreen.hideAsync();
+        // Handle errors during initialization
+        Sentry.captureException(error);
+        await SplashScreen.hideAsync();
+        setIsLoading(false);
       }
     };
 
     loadApp();
-  }, []);
+  }, [refreshUser, handleRequestNotificationPermission]);
 
-  // Determine whether to show the notifier
+  // Memoized logic to determine whether to show the notifier
   const shouldShowNoter = useMemo(() => {
-    const result =
+    return (
       labTestsCount > 0 &&
       currentRoute !== "labCart" &&
-      currentRoute !== "Booking_Test_Confirm";
-    console.log("shouldShowNoter:", result);
-    return result;
+      currentRoute !== "Booking_Test_Confirm"
+    );
   }, [labTestsCount, currentRoute]);
 
-  // Conditional overlay rendering
+  // Memoized overlay rendering
   const renderOverlay = useMemo(() => {
     if (!showGif || currentRoute === "labCart" || currentRoute === "Booking_Test_Confirm") {
       return null;
     }
 
-    console.log("🎉 Showing confetti overlay");
     return (
       <View style={styles.overlay}>
         <LottieView
@@ -244,14 +236,15 @@ const App = () => {
     );
   }, [showGif, currentRoute]);
 
-  return (
-    <GestureHandlerRootView>
+  if (isLoading) {
+    return <View style={styles.fullScreenLoader}><AppLoading /></View>;
+  }
 
+  return (
+    <GestureHandlerRootView style={styles.container}>
       <NavigationContainer ref={navigationContainerRef}>
         <SafeAreaProvider>
-
           <Stack.Navigator>
-
             {/* Home Screen */}
             <Stack.Screen name="Home" component={Home} options={screenConfigs.noHeader} />
 
@@ -266,6 +259,7 @@ const App = () => {
 
             {/* Service Screens */}
             <Stack.Screen name="Bakery" component={Bakery} options={{ ...screenConfigs.noHeader, title: "Pet Bakery" }} />
+            <Stack.Screen name="Dynamic_Details_Shop_Bakery" component={ProductDetailScreen} options={{ ...screenConfigs.noHeader, title: "Pet Bakery" }} />
             <Stack.Screen name="Consultation" component={Consultation} options={{ ...screenConfigs.noHeader, title: "Online Consultation" }} />
             <Stack.Screen name="Notifications" component={NotificationScreen} options={{ ...screenConfigs.noHeader, title: "Online Consultation" }} />
             <Stack.Screen name="next-step" component={BookingConsultation} options={screenConfigs.noHeader} />
@@ -320,12 +314,6 @@ const App = () => {
             <Stack.Screen name="select_address_and_order" component={Address} options={screenConfigs.noHeader} />
 
             {/* Lab Test Screen */}
-
-            {/* 
-          <Stack.Screen name="lab_Clinic" component={Lab_Clinic} options={screenConfigs.noHeader} />
-          <Stack.Screen name="TestPage" component={TestPage} options={screenConfigs.noHeader} />
-          <Stack.Screen name="next-step_booking_lab" component={Book_Test} options={screenConfigs.noHeader} />
-          <Stack.Screen name="TestSelection" component={Single_Test} options={screenConfigs.noHeader} /> */}
             <Stack.Screen name="labCart" component={SuperficialCart} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
             <Stack.Screen name="Booking_Test_Confirm" component={Booking_Test_Confirm} options={{ ...screenConfigs.noHeader, title: "Dog Grooming" }} />
 
@@ -341,10 +329,6 @@ const App = () => {
             <Stack.Screen name="VaccineDetail" component={VaccineDetailsNew} options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }} />
             <Stack.Screen name="book-now-vaccine" component={BookingVaccine} options={{ ...screenConfigs.noHeader, title: "VaccineDetailsNew" }} />
 
-            {/* <Stack.Screen name="vaccination_home" component={Vaccination} options={screenConfigs.withTitle("Vaccination")} />
-          <Stack.Screen name="vaccination_booked" component={BookVaccination} options={screenConfigs.withTitle("Booking Successful 😃")} />
-          <Stack.Screen name="vaccination" component={Vaccinations} options={{ ...screenConfigs.noHeader, title: "Vaccination Best For Pet" }} />
-          <Stack.Screen name="VaccineDetails" component={VaccineDetails} options={{ ...screenConfigs.noHeader, title: "Vaccination Details" }} /> */}
 
             {/* Coming-Soon Screen */}
             <Stack.Screen name="Coming_soon" component={Coming_soon} options={{ ...screenConfigs.noHeader, title: "Coming Soon" }} />
@@ -373,6 +357,9 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   overlay: {
     position: "absolute",
     top: 0,
@@ -394,15 +381,31 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  fullScreenLoader: {
+    flex: 1,
+    height: '100%',
+    width: width,
+    backgroundColor: '#f0fffe',
+
+  },
+  loadingContainer: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  loadingAnimation: {
+    width: 200,
+    height: 200,
+  },
 });
 
 // Root App component wrapped with store provider
 const RootApp = () => (
   <Provider store={store}>
     <SafeAreaProvider>
-      <StatusBar
-        barStyle={'default'}
-      />
+      <StatusBar barStyle={'default'} />
       <ErrorBoundaryWrapper>
         <App />
       </ErrorBoundaryWrapper>
